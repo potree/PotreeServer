@@ -8,13 +8,14 @@ const port = 3000;
 const serverWorkingDirectory = "D:/";
 const elevationProfileExe = "D:/dev/workspaces/CPotree/master/bin/Release_x64/PotreeElevationProfile.exe";
 
-//class Worker{
-//	constructor(){
-//		this.uuid = uuid.v4();
-//	}
-//};
-//
-//let workers = new Map();
+class Worker{
+	constructor(){
+		this.uuid = uuid.v4();
+		this.started = new Date();
+	}
+};
+
+let workers = new Map();
 
 function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, estimate){
 	//let args = [
@@ -44,11 +45,90 @@ function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLev
 	
 	let result = spawnSync(elevationProfileExe, args, {shell: false});
 	
-	//let worker = new Worker();
-	//workers.set(worker.uuid, worker);
+	let worker = new Worker();
+	workers.set(worker.uuid, worker);
+	
+	console.log(worker.uuid);
 	
 	return result;
 }
+
+
+
+let handlers = {
+	
+	"get_profile": function(request, response){
+		let purl = url.parse(request.url, true);
+		let query = purl.query;
+		
+		let v = (value, def) => ((value === undefined) ? def : value);
+		
+		let minLevel = v(query.minLOD, 0);
+		let maxLevel = v(query.maxLOD, 5);
+		let width = v(query.width, 1);
+		let coordinates = v(query.coordinates, null);
+		let pointcloud = v(query.pointCloud, null);
+		
+		let result = potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, false);
+		
+		return result.stdout;
+	},
+	
+	"get_status": function(request, response){
+		let purl = url.parse(request.url, true);
+		let query = purl.query;
+		
+		let workerID = query.workerID;
+		
+		if(!workerID){
+			let response = `<html><body>
+			
+			Number of workers: ${workers.size} <br>
+			
+			<table>`;
+			
+			for(let entry of workers){
+				response += `
+				<tr>
+					<td>${entry[0]}</td>
+					<td>${entry[1].started.toLocaleString()}</td>
+				</tr>`;
+			}
+			
+			response += `</table></body></html>`;
+			
+			return response;
+		}else{
+		
+			let worker = workers.get(workerID);
+			
+			if(!worker){
+				return `no worker with specified ID found`;
+			}else{
+				let response = `
+				<html>
+				<body>
+				
+					worker id: ${workerID}<br>
+					started at: ${worker.started.toLocaleString()}
+				
+				</body>
+				</html>
+				`;
+				
+				return response;
+			}
+		}
+		
+		
+		
+	}
+};
+
+
+
+
+
 
 function startServer(){
 
@@ -69,19 +149,11 @@ function startServer(){
 		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
 		
 		if(["getProfile", "get_profile"].includes(basename)){
-			let v = (value, def) => ((value === undefined) ? def : value);
-			
-			let minLevel = v(query.minLOD, 0);
-			let maxLevel = v(query.maxLOD, 5);
-			let width = v(query.width, 1);
-			let coordinates = v(query.coordinates, null);
-			let pointcloud = v(query.pointCloud, null);
-			
-			let result = potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, false);
-			
-			response.write(result.stdout);
+			let res = handlers["get_profile"](request, response);
+			response.write(res);
 		}else{
-			
+			let res = handlers["get_status"](request, response);
+			response.write(res);
 		}
 		
 		response.end("");
