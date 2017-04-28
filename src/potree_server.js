@@ -5,6 +5,9 @@ const uuid = require('uuid');
 const url = require('url');
 const http = require('http');
 
+const fs = require('fs');
+const path = require('path');
+
 const port = 3000;
 const serverWorkingDirectory = "D:/";
 const outputDirectory = "D:/dev/temp";
@@ -13,10 +16,12 @@ let maxPointsProcessedThreshold = 10*1000*1000;
 
 const css = `
 
-body{
+.centering{
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 100%;
+	height: 100%;
 }
 
 .panel{
@@ -42,184 +47,15 @@ body{
 	margin: 5px;
 }
 
+td{
+	padding: 2px 15px 2px 5px;
+}
+
 `;
 
 const workers = {
 	active: new Map(),
 	finished: new Map()
-};
-
-function findWorker(uuid){
-	let activeWorker = workers.active.get(uuid);
-	
-	if(activeWorker){
-		return activeWorker;
-	}
-	
-	let finishedWorker = workers.finished.get(uuid);
-	
-	if(finishedWorker){
-		return finishedWorker;
-	}
-	
-	return null;
-}
-
-const workerStatus = {
-	INACTIVE: 0,
-	ACTIVE: 1,
-	CANCELED: 2,
-	FINISHED: 3
-}
-
-class Worker{
-	constructor(){
-		this.uuid = uuid.v4();
-		this.started = new Date();
-		this.finished = null;
-		this.status = workerStatus.INACTIVE;
-	}
-	
-	start(){
-		workers.active.set(this.uuid, this);
-		this.status = workerStatus.ACTIVE;
-	}
-	
-	cancel(){
-		workers.active.delete(this.uuid);
-		workers.finished.set(this.uuid, this);
-		this.finished = new Date();
-		this.status = workerStatus.CANCELED;
-	}
-	
-	done(){
-		workers.active.delete(this.uuid);
-		workers.finished.set(this.uuid, this);
-		this.finished = new Date();
-		this.status = workerStatus.FINISHED;
-	}
-	
-	getStatusString(){
-		let status = Object.keys(workerStatus).filter(key => workerStatus[key] === this.status)[0];
-		return status;
-	}
-	
-	statusPage(){
-		
-		
-		let page = `
-		<html>
-		<body>
-		
-			worker id: ${this.uuid}<br>
-			started at: ${this.started.toLocaleString()}<br>
-			status: ${this.getStatusString()}
-		
-		</body>
-		</html>
-		`;
-		
-		return page;
-	}
-};
-
-class PotreeElevationProfileWorker extends Worker{
-	constructor(pointcloud, coordinates, width, minLevel, maxLevel){
-		super();
-		
-		this.pointcloud = pointcloud;
-		this.coordinates = coordinates;
-		this.width = width;
-		this.minLevel = minLevel;
-		this.maxLevel = maxLevel;
-	}
-	
-	start(){
-		super.start();
-		
-		let purl = url.parse(this.pointcloud);
-		let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
-		let outPath = `${outputDirectory}/${this.uuid}/result.las`;
-		
-		console.log("realPointcloudPath", realPointcloudPath);
-		
-		let args = [
-			realPointcloudPath,
-			"--coordinates", this.coordinates,
-			"--width", this.width, 
-			"--min-level", this.minLevel, 
-			"--max-level", this.maxLevel, 
-			"-o", outPath
-		];
-		
-		this.outPath = outPath;
-		
-		console.log("spawing elevation profile task with arguments: ");
-		console.log(args);
-		
-		let process = spawn(elevationProfileExe, args, {shell: false});
-		process.on('close', (code) => {
-			this.done();
-			//console.log(`child process exited with code ${code}`);
-		});
-
-	}
-	
-	cancel(){
-		super.cancel();
-	}
-	
-	
-	statusPage(){
-		
-		let finished = this.finished ? this.finished.toLocaleString() : "no yet";
-		
-		let content = "";
-		if([workerStatus.FINISHED, workerStatus.CANCELED].includes(this.status)){
-			content = `
-			Extracted profile is available for download at: <br>
-			<a href="${this.outPath}">${this.outPath}</a>
-			`;
-		}else{
-			content = `Profile extraction in progress.`;
-		}
-		
-		let page = `
-		<html>
-		<style>${css}</style>
-		<body>
-		
-		
-		<div class="panel">
-			<span id="titlebar" class="titlebar">Profile Extraction - Status</span>
-			<span id="workerdata" class="workerdata">
-				<table>
-					<tr>
-						<td>uuid</td>
-						<td>${this.uuid}</td>
-					</tr>
-					<tr>
-						<td>started</td>
-						<td>${this.started.toLocaleString()}</td>
-					</tr>
-					<tr>
-						<td>finished</td>
-						<td>${finished}</td>
-					</tr>
-				</table>
-			</span>
-			<span id="content" class="content">
-				${content}
-			</span>
-		</div>
-			
-		
-		</body>
-		</html>
-		`;
-		
-		return page;
-	}
 };
 
 function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, estimate){
@@ -269,8 +105,8 @@ let handlers = {
 		let pointcloud = v(query.pointCloud, null);
 		
 		let result = potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, true);
-		
-		return result.stdout;
+	
+		response.end(result.stdout);
 	},
 	
 	"start_profile_worker": function(request, response){
@@ -294,7 +130,7 @@ let handlers = {
 				message: `Too many candidate points within the selection: ${result.pointsProcessed}`
 			};
 			
-			return JSON.stringify(res, null, "\t");
+			response.end(JSON.stringify(res, null, "\t"));
 		}else{
 			let worker = new PotreeElevationProfileWorker(pointcloud, coordinates, width, minLevel, maxLevel);
 			worker.start();
@@ -305,7 +141,43 @@ let handlers = {
 				message: `Worker sucessfully spawned: ${worker.uuid}`
 			};
 			
-			return JSON.stringify(res, null, "\t");
+			response.end(JSON.stringify(res, null, "\t"));
+		}
+		
+		
+	},
+	
+	"get_las": function(request, response){
+		let purl = url.parse(request.url, true);
+		let query = purl.query;
+		
+		let workerID = query.workerID;
+		let worker = findWorker(workerID);
+		
+		if(worker){
+			
+			let filePath = `${outputDirectory}/${worker.uuid}/result.las`;
+			let stat = fs.statSync(filePath);
+
+			response.writeHead(200, {
+				'Content-Type': 'application/octet-stream',
+				'Content-Length': stat.size,
+				"Connection": "Close"
+			});
+
+			let readStream = fs.createReadStream(filePath);
+			readStream.on('data', function(data) {
+				response.write(data);
+			});
+			
+			readStream.on('finish', function() {
+				response.end();        
+			});
+			
+			return null;
+		}else{
+			response.statusCode = 404;
+			response.end("");
 		}
 		
 		
@@ -321,56 +193,81 @@ let handlers = {
 			
 			
 			
-			let response = `<html><body>`;
+			let res = `<html>
+			<style>${css}</style>
+			<body>`;
 			
 			{ // ACTIVE WORKERS
-				response += `
+				res += `
 				Number of active workers: ${workers.active.size} <br>
 				
-				<table>`;
+				<table>
+					<tr>
+						<th>Type</th>
+						<th>ID</th>
+						<th>started</th>
+						<th>status</th>
+					</tr>
+				`;
 				
 				for(let entry of workers.active){
-					response += `
+					let worker = entry[1];
+					
+					res += `
 					<tr>
-						<td>${entry[0]}</td>
-						<td>${entry[1].started.toLocaleString()}</td>
-						<td>${entry[1].getStatusString()}</td>
+						<td>${worker.constructor.name}</td>
+						<td><a href="./get_status?workerID=${entry[0]}">${entry[0]}</a></td>
+						<td>${worker.started.toLocaleString()}</td>
+						<td>${worker.getStatusString()}</td>
 					</tr>`;
 				}
 				
-				response += `</table>`;
+				res += `</table>`;
 			}
 			
-			{ // ACTIVE WORKERS
-				response += `
+			res += `<br>`;
+			
+			{ // FINISHED / CANCELED WORKERS
+				res += `
 				Number of finished / canceled workers: ${workers.finished.size} <br>
 				
-				<table>`;
+				<table>
+					<tr>
+						<th>Type</th>
+						<th>ID</th>
+						<th>started</th>
+						<th>status</th>
+					</tr>`;
 				
 				for(let entry of workers.finished){
-					response += `
+					let worker = entry[1];
+					
+					res += `
 					<tr>
-						<td>${entry[0]}</td>
-						<td>${entry[1].started.toLocaleString()}</td>
-						<td>${entry[1].getStatusString()}</td>
+						<td>${worker.constructor.name}</td>
+						<td><a href="./get_status?workerID=${entry[0]}">${entry[0]}</a></td>
+						<td>${worker.started.toLocaleString()}</td>
+						<td>${worker.getStatusString()}</td>
 					</tr>`;
 				}
 				
-				response += `</table>`;
+				res += `</table>`;
 			}
 			
-			response += `</body></html>`;
+			res += `</body></html>`;
 			
-			return response;
+			response.end(res);
 		}else{
 		
 			//let worker = workers.active.get(workerID);
 			let worker = findWorker(workerID);
 			
 			if(!worker){
-				return `no worker with specified ID found`;
+				response.end(`no worker with specified ID found`);
+				//return `no worker with specified ID found`;
 			}else{
-				return worker.statusPage();
+				response.end(worker.statusPage());
+				//return worker.statusPage();
 			}
 		}
 		
@@ -402,16 +299,16 @@ function startServer(){
 		}
 		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
 		
-		let handler = handlers[basename];
+		let handler = handlers[basename] || handlers["get_status"];
+		
 		
 		if(handler){
-			let res = handler(request, response);
-			response.write(res);
+			handler(request, response);
 		}else{
 			response.statusCode = 404;
+			response.end("");
 		}
 		
-		response.end("");
 		
 		console.log("== REQUEST END ==");
 	};
