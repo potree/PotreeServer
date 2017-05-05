@@ -53,6 +53,18 @@ class Worker{
 		return status;
 	}
 	
+	getStatus(){
+		let status = {
+			type: this.constructor.name,
+			uuid: this.uuid,
+			started: this.started,
+			finished: this.finished,
+			status: Object.keys(workerStatus)[this.status]
+		};
+		
+		return status;
+	}
+	
 	statusPage(){
 		
 		

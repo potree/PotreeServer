@@ -1,12 +1,15 @@
-class PotreeElevationProfileWorker extends Worker{
-	constructor(pointcloud, coordinates, width, minLevel, maxLevel){
+class PotreeExtractRegionWorker extends Worker{
+	
+	// box is a 4x4 matrix that specifies a transformation from a 
+	// 1x1x1 box at the origin (coordinates from -0.5 to 0.)
+	// to an oriented box in space. 
+	// Points within that oriented box are considered "inside" and will be extracted.
+	//
+	constructor(pointcloud, box){
 		super();
 		
 		this.pointcloud = pointcloud;
-		this.coordinates = coordinates;
-		this.width = width;
-		this.minLevel = minLevel;
-		this.maxLevel = maxLevel;
+		this.box = box;
 	}
 	
 	start(){

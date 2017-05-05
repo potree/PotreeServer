@@ -109,6 +109,23 @@ let handlers = {
 		response.end(result.stdout);
 	},
 	
+	"get_profile_estimate": function(request, response){
+		let purl = url.parse(request.url, true);
+		let query = purl.query;
+		
+		let v = (value, def) => ((value === undefined) ? def : value);
+		
+		let minLevel = v(query.minLOD, 0);
+		let maxLevel = v(query.maxLOD, 5);
+		let width = v(query.width, 1);
+		let coordinates = v(query.coordinates, null);
+		let pointcloud = v(query.pointCloud, null);
+		
+		let result = potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, true);
+	
+		response.end(result.stdout);
+	},
+	
 	"start_profile_worker": function(request, response){
 		let purl = url.parse(request.url, true);
 		let query = purl.query;
@@ -122,6 +139,15 @@ let handlers = {
 		let pointcloud = v(query.pointCloud, null);
 		
 		let result = potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, true);
+		try{
+			result = JSON.parse(result.stdout);
+		}catch(e){
+			console.log(result);
+			let res = {
+				status: "ERROR_START_PROFILE_WORKER_FAILED",
+				message: `Failed to start a profile worker`
+			};
+		}
 		
 		if(result.pointsProcessed > maxPointsProcessedThreshold){
 			let res = {
@@ -161,6 +187,7 @@ let handlers = {
 
 			response.writeHead(200, {
 				'Content-Type': 'application/octet-stream',
+				"Content-Disposition": `attachment;filename=${worker.uuid}.las`,
 				'Content-Length': stat.size,
 				"Connection": "Close"
 			});
@@ -266,8 +293,8 @@ let handlers = {
 				response.end(`no worker with specified ID found`);
 				//return `no worker with specified ID found`;
 			}else{
-				response.end(worker.statusPage());
-				//return worker.statusPage();
+				//response.end(worker.statusPage());
+				response.end(JSON.stringify(worker.getStatus(), null, "\t"));
 			}
 		}
 		
