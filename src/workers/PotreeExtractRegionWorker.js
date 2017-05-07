@@ -5,11 +5,13 @@ class PotreeExtractRegionWorker extends Worker{
 	// to an oriented box in space. 
 	// Points within that oriented box are considered "inside" and will be extracted.
 	//
-	constructor(pointcloud, box){
+	constructor(pointcloud, box, minLevel, maxLevel){
 		super();
 		
 		this.pointcloud = pointcloud;
 		this.box = box;
+		this.minLevel = minLevel;
+		this.maxLevel = maxLevel;
 	}
 	
 	start(){
@@ -23,8 +25,7 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		let args = [
 			realPointcloudPath,
-			"--coordinates", this.coordinates,
-			"--width", this.width, 
+			"--box", this.box,
 			"--min-level", this.minLevel, 
 			"--max-level", this.maxLevel, 
 			"-o", outPath
@@ -32,10 +33,10 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		this.outPath = outPath;
 		
-		console.log("spawing elevation profile task with arguments: ");
+		console.log("spawing region extraction task with arguments: ");
 		console.log(args);
 		
-		let process = spawn(elevationProfileExe, args, {shell: false});
+		let process = spawn(extractRegionExe, args, {shell: false});
 		process.on('close', (code) => {
 			this.done();
 		});
@@ -71,7 +72,7 @@ class PotreeExtractRegionWorker extends Worker{
 			<a href="${downloadLink}">${downloadLink}</a>
 			`;
 		}else{
-			content = `Profile extraction in progress.`;
+			content = `Region extraction in progress.`;
 		}
 		
 		let page = `
@@ -81,7 +82,7 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		<div class="centering">
 		<div class="panel">
-			<span id="titlebar" class="titlebar">Profile Extraction - Status</span>
+			<span id="titlebar" class="titlebar">Region Extraction - Status</span>
 			<span id="workerdata" class="workerdata">
 				<table>
 					<tr>

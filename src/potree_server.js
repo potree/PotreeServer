@@ -12,6 +12,7 @@ const port = 3000;
 const serverWorkingDirectory = "D:/";
 const outputDirectory = "D:/dev/temp";
 const elevationProfileExe = "D:/dev/workspaces/CPotree/master/bin/Release_x64/PotreeElevationProfile.exe";
+const extractRegionExe = "D:/dev/workspaces/CPotree/master/bin/Release_x64/PotreeExtractRegion.exe";
 let maxPointsProcessedThreshold = 10*1000*1000;
 
 const css = `
@@ -59,12 +60,6 @@ const workers = {
 };
 
 function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, estimate){
-	//let args = [
-	//	"D:/dev/pointclouds/converted/CA13/cloud.js",
-	//	"--coordinates", "{693550.968, 3915914.169},{693890.618, 3916387.819},{694584.820, 3916458.180},{694786.239, 3916307.199}",
-	//	"--width", "14.0", "--min-level", "0", "--max-level", "3", "--stdout",
-	//	"--estimate"
-	//];
 
 	let purl = url.parse(pointcloud);
 	let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
@@ -85,6 +80,30 @@ function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLev
 	}
 	
 	let result = spawnSync(elevationProfileExe, args, {shell: false});
+	
+	return result;
+}
+
+function potreeExtractRegion(pointcloud, box, minLevel, maxLevel, estimate){
+
+	let purl = url.parse(pointcloud);
+	let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
+	
+	console.log("realPointcloudPath", realPointcloudPath);
+	
+	let args = [
+		realPointcloudPath,
+		"--box", box,
+		"--min-level", minLevel, 
+		"--max-level", maxLevel, 
+		"--stdout"
+	];
+	
+	if(estimate){
+		args.push("--estimate");
+	}
+	
+	let result = spawnSync(extractRegionExe, args, {shell: false});
 	
 	return result;
 }
@@ -169,8 +188,52 @@ let handlers = {
 			
 			response.end(JSON.stringify(res, null, "\t"));
 		}
+	},
+	
+	"start_extract_region_worker": function(request, response){
+		let purl = url.parse(request.url, true);
+		let query = purl.query;
 		
+		let v = (value, def) => ((value === undefined) ? def : value);
 		
+		let minLevel = v(query.minLOD, 0);
+		let maxLevel = v(query.maxLOD, 5);
+		let box = v(query.box, null);
+		let pointcloud = v(query.pointCloud, null);
+		
+		console.log(`BOX: ${box}`);
+		
+		let result = potreeExtractRegion(pointcloud, box, minLevel, maxLevel, true);
+		try{
+			result = JSON.parse(result.stdout);
+		}catch(e){
+			console.log(result);
+			let res = {
+				status: "ERROR_START_EXTRACT_REGION_WORKER_FAILED",
+				message: `Failed to start a region extraction worker`
+			};
+		}
+		
+		if(result.pointsProcessed > maxPointsProcessedThreshold){
+			let res = {
+				status: "ERROR_POINT_PROCESSED_ESTIMATE_TOO_LARGE",
+				estimate: result.pointsProcessed,
+				message: `Too many candidate points within the selection: ${result.pointsProcessed}`
+			};
+			
+			response.end(JSON.stringify(res, null, "\t"));
+		}else{
+			let worker = new PotreeExtractRegionWorker(pointcloud, box, minLevel, maxLevel);
+			worker.start();
+			
+			let res = {
+				status: "OK",
+				workerID: worker.uuid,
+				message: `Worker sucessfully spawned: ${worker.uuid}`
+			};
+			
+			response.end(JSON.stringify(res, null, "\t"));
+		}
 	},
 	
 	"get_las": function(request, response){

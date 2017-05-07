@@ -19,6 +19,7 @@ let paths = {
 	server : [
 		"src/workers/Worker.js",
 		"src/workers/PotreeElevationProfileWorker.js",
+		"src/workers/PotreeExtractRegionWorker.js",
 		"src/potree_server.js",
 	]
 };
