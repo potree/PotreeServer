@@ -4,55 +4,23 @@ const spawn = require('child_process').spawn;
 const uuid = require('uuid');
 const url = require('url');
 const http = require('http');
-
 const fs = require('fs');
 const path = require('path');
 
-const port = 3000;
-const serverWorkingDirectory = "D:/";
-const outputDirectory = "D:/dev/temp";
-const elevationProfileExe = "D:/dev/workspaces/CPotree/master/bin/Release_x64/PotreeElevationProfile.exe";
-const extractRegionExe = "D:/dev/workspaces/CPotree/master/bin/Release_x64/PotreeExtractRegion.exe";
-let maxPointsProcessedThreshold = 10*1000*1000;
+//console.log(__filename);
+//console.log(__dirname);
 
-const css = `
+let settingsPath = `${__dirname}/settings.json`;
+let settings = null;
 
-.centering{
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
+console.log(`Using settings from: '${settingsPath}'`);
+
+if(fs.existsSync(settingsPath)){
+	settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+}else{
+	console.err(`No settings found at: '${settingsPath}'`);
+	process.exit()
 }
-
-.panel{
-	border: 1px solid black;
-	position: absolute;
-}
-
-.titlebar{
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	font-weight: bold;
-	margin: 5px;
-}
-
-.workerdata{
-	display: flex;
-	margin: 5px;
-}
-
-.content{
-	display: block;
-	margin: 5px;
-}
-
-td{
-	padding: 2px 15px 2px 5px;
-}
-
-`;
 
 const workers = {
 	active: new Map(),
@@ -62,7 +30,7 @@ const workers = {
 function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLevel, estimate){
 
 	let purl = url.parse(pointcloud);
-	let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
+	let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname.substr(1);
 	
 	console.log("realPointcloudPath", realPointcloudPath);
 	
@@ -79,7 +47,7 @@ function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLev
 		args.push("--estimate");
 	}
 	
-	let result = spawnSync(elevationProfileExe, args, {shell: false});
+	let result = spawnSync(settings.elevationProfileExe, args, {shell: false});
 	
 	return result;
 }
@@ -87,7 +55,7 @@ function potreeElevationProfile(pointcloud, coordinates, width, minLevel, maxLev
 function potreeExtractRegion(pointcloud, box, minLevel, maxLevel, estimate){
 
 	let purl = url.parse(pointcloud);
-	let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
+	let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname.substr(1);
 	
 	console.log("realPointcloudPath", realPointcloudPath);
 	
@@ -103,7 +71,7 @@ function potreeExtractRegion(pointcloud, box, minLevel, maxLevel, estimate){
 		args.push("--estimate");
 	}
 	
-	let result = spawnSync(extractRegionExe, args, {shell: false});
+	let result = spawnSync(settings.extractRegionExe, args, {shell: false});
 	
 	return result;
 }
@@ -168,7 +136,7 @@ let handlers = {
 			};
 		}
 		
-		if(result.pointsProcessed > maxPointsProcessedThreshold){
+		if(result.pointsProcessed > settings.maxPointsProcessedThreshold){
 			let res = {
 				status: "ERROR_POINT_PROCESSED_ESTIMATE_TOO_LARGE",
 				estimate: result.pointsProcessed,
@@ -214,7 +182,7 @@ let handlers = {
 			};
 		}
 		
-		if(result.pointsProcessed > maxPointsProcessedThreshold){
+		if(result.pointsProcessed > settings.maxPointsProcessedThreshold){
 			let res = {
 				status: "ERROR_POINT_PROCESSED_ESTIMATE_TOO_LARGE",
 				estimate: result.pointsProcessed,
@@ -245,7 +213,7 @@ let handlers = {
 		
 		if(worker){
 			
-			let filePath = `${outputDirectory}/${worker.uuid}/result.las`;
+			let filePath = `${settings.outputDirectory}/${worker.uuid}/result.las`;
 			let stat = fs.statSync(filePath);
 
 			response.writeHead(200, {
@@ -281,10 +249,8 @@ let handlers = {
 		
 		if(!workerID){
 			
-			
-			
 			let res = `<html>
-			<style>${css}</style>
+			<link rel="stylesheet" type="text/css" href="http://${request.headers.host}/server.css">
 			<body>`;
 			
 			{ // ACTIVE WORKERS
@@ -367,7 +333,45 @@ let handlers = {
 };
 
 
+function handleRequestFile(request, response){
+	//http://localhost:3000/resources/server.css
+	
+	let purl = url.parse(request.url, true);
+	let query = purl.query;
+	
+	
+	let file = `${settings.wwwroot}${purl.pathname}`;
+	
+	if(fs.existsSync(file)){
+		// TODO proper mime type handling, e.g.https://www.npmjs.com/package/mime-types
+		if(file.toLowerCase().endsWith(".css")){
+			response.writeHead(200, {
+				'Content-Type': 'text/css'
+			});
+		}else{
+			response.writeHead(200, {
+				'Content-Type': 'application/octet-stream'
+			});
+		}
+		
+		
+		let readStream = fs.createReadStream(file);
+		readStream.pipe(response);
+		
+		readStream.on('close', () => {
+			response.end();
+		});
+		
+		readStream.on('error', () => {
+			response.end();
+		});
 
+	}else{
+		response.statusCode = 404;
+		response.end("");
+	}
+	
+}
 
 
 
@@ -381,7 +385,7 @@ function startServer(){
 		let basename = purl.pathname.substr(purl.pathname.lastIndexOf("/") + 1);
 		let query = purl.query;
 		
-		console.log("from: ", request.headers.origin);
+		console.log("from: ", request.headers.host);
 		console.log("request: ", request.url);
 		
 		if(request.headers.origin){
@@ -389,8 +393,14 @@ function startServer(){
 		}
 		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
 		
-		let handler = handlers[basename] || handlers["get_status"];
-		
+		let handler = null;
+		if(request.url === "/"){
+			handler = handlers["get_status"];
+		}else if(handlers[basename]){
+			handler = handlers[basename];
+		}else{
+			handler = handleRequestFile;
+		}
 		
 		if(handler){
 			handler(request, response);
@@ -405,12 +415,12 @@ function startServer(){
 
 	let server = http.createServer(requestHandler);
 
-	server.listen(port, (err) => {  
+	server.listen(settings.port, (err) => {  
 		if (err) {
 			return console.log('something bad happened', err)
 		}
 		
-		console.log(`server is listening on ${port}`)
+		console.log(`server is listening on ${settings.port}`)
 	});
 }
 

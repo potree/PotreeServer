@@ -18,8 +18,8 @@ class PotreeExtractRegionWorker extends Worker{
 		super.start();
 		
 		let purl = url.parse(this.pointcloud);
-		let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
-		let outPath = `${outputDirectory}/${this.uuid}/result.las`;
+		let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname;
+		let outPath = `${settings.outputDirectory}/${this.uuid}/result.las`;
 		
 		console.log("realPointcloudPath", realPointcloudPath);
 		
@@ -36,7 +36,7 @@ class PotreeExtractRegionWorker extends Worker{
 		console.log("spawing region extraction task with arguments: ");
 		console.log(args);
 		
-		let process = spawn(extractRegionExe, args, {shell: false});
+		let process = spawn(settings.extractRegionExe, args, {shell: false});
 		process.on('close', (code) => {
 			this.done();
 		});

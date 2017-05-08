@@ -13,8 +13,8 @@ class PotreeElevationProfileWorker extends Worker{
 		super.start();
 		
 		let purl = url.parse(this.pointcloud);
-		let realPointcloudPath = serverWorkingDirectory + purl.pathname.substr(1);
-		let outPath = `${outputDirectory}/${this.uuid}/result.las`;
+		let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname;
+		let outPath = `${settings.outputDirectory}/${this.uuid}/result.las`;
 		
 		console.log("realPointcloudPath", realPointcloudPath);
 		
@@ -32,7 +32,7 @@ class PotreeElevationProfileWorker extends Worker{
 		console.log("spawing elevation profile task with arguments: ");
 		console.log(args);
 		
-		let process = spawn(elevationProfileExe, args, {shell: false});
+		let process = spawn(settings.elevationProfileExe, args, {shell: false});
 		process.on('close', (code) => {
 			this.done();
 		});

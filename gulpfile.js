@@ -21,6 +21,15 @@ let paths = {
 		"src/workers/PotreeElevationProfileWorker.js",
 		"src/workers/PotreeExtractRegionWorker.js",
 		"src/potree_server.js",
+	],
+	settings: [
+		"resources/settings.json"
+	],
+	resources: [
+		"resources/**/*"
+	],
+	www: [
+		"www/**/*"
 	]
 };
 
@@ -30,6 +39,15 @@ gulp.task("build", [], function(){
 		.pipe(concat('potree_server.js'))
 		.pipe(size({showFiles: true}))
 		.pipe(gulp.dest('build/potree_server'));
+		
+	gulp.src(paths.settings)
+		.pipe(gulp.dest('build/potree_server'));
+		
+	gulp.src(paths.resources)
+		.pipe(gulp.dest('build/potree_server/resources'));
+		
+	gulp.src(paths.www)
+		.pipe(gulp.dest('build/potree_server/www'));
 
 	return;
 });
@@ -51,7 +69,7 @@ gulp.task('watch', function() {
 	gulp.run("build");
 	gulp.run("server");
 	
-    gulp.watch(['src/**/*.js'], function(){
+    gulp.watch(['src/**/*.js', 'resources/**/*', 'www/**/*'], function(){
 		gulp.run("build");
 		gulp.run("server");
 	});
