@@ -68,10 +68,32 @@ function potreeExtractRegion(pointcloud, box, minLevel, maxLevel, estimate){
 	];
 	
 	if(estimate){
-		args.push("--estimate");
+		args.push("--check-threshold");
+		args.push(settings.maxPointsProcessedThreshold);
 	}
 	
-	let result = spawnSync(settings.extractRegionExe, args, {shell: false});
+	let result = spawnSync(`${__dirname}/${settings.extractRegionExe}`, args, {shell: false});
+	
+	return result;
+}
+
+function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, threshold){
+	
+	let purl = url.parse(pointcloud);
+	let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname.substr(1);
+	
+	console.log("realPointcloudPath", realPointcloudPath);
+	
+	let args = [
+		realPointcloudPath,
+		"--box", box,
+		"--min-level", minLevel, 
+		"--max-level", maxLevel, 
+		"--stdout",
+		"--check-threshold", threshold
+	];
+	
+	let result = spawnSync(`${__dirname}/${settings.extractRegionExe}`, args, {shell: false});
 	
 	return result;
 }
@@ -170,27 +192,29 @@ let handlers = {
 		let pointcloud = v(query.pointCloud, null);
 		
 		console.log(`BOX: ${box}`);
-		
-		let result = potreeExtractRegion(pointcloud, box, minLevel, maxLevel, true);
+
+		let check = potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
+
 		try{
-			result = JSON.parse(result.stdout);
+			check = JSON.parse(check.stdout.toString());
 		}catch(e){
 			console.log(result);
 			let res = {
 				status: "ERROR_START_EXTRACT_REGION_WORKER_FAILED",
-				message: `Failed to start a region extraction worker`
-			};
-		}
-		
-		if(result.pointsProcessed > settings.maxPointsProcessedThreshold){
-			let res = {
-				status: "ERROR_POINT_PROCESSED_ESTIMATE_TOO_LARGE",
-				estimate: result.pointsProcessed,
-				message: `Too many candidate points within the selection: ${result.pointsProcessed}`
+				message: "Failed to start a region extraction worker"
 			};
 			
 			response.end(JSON.stringify(res, null, "\t"));
-		}else{
+		}
+		
+		if(check.result === "THRESHOLD_EXCEEDED"){
+			let res = {
+				status: "ERROR_POINT_PROCESSED_ESTIMATE_TOO_LARGE",
+				message: `Too many candidate points within the selection.`
+			};
+			
+			response.end(JSON.stringify(res, null, "\t"));
+		}else if(check.result === "BELOW_THRESHOLD"){
 			let worker = new PotreeExtractRegionWorker(pointcloud, box, minLevel, maxLevel);
 			worker.start();
 			
