@@ -27,6 +27,7 @@ class Worker{
 		this.started = new Date();
 		this.finished = null;
 		this.status = workerStatus.INACTIVE;
+		this.user = null;
 	}
 	
 	start(){

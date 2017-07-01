@@ -5,5 +5,6 @@
 	"outputDirectory": "D:/dev/temp",
 	"extractRegionExe": "D:/dev/workspaces/PotreeServer/workers/build/potree_server/bin/PotreeExtractRegion.exe",
 	"maxPointsProcessedThreshold": 10000000,
-	"maxActiveWorkers": 1
+	"maxActiveWorkers": 1,
+	"authenticate": true
 }

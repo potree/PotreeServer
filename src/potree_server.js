@@ -1,4 +1,7 @@
 
+const archiver = require('archiver');
+const express = require("express");
+const cors = require('cors');
 const spawnSync = require('child_process').spawnSync;
 const spawn = require('child_process').spawn;
 const uuid = require('uuid');
@@ -15,6 +18,9 @@ let settings = null;
 
 console.log("starting potree server");
 console.log(`Using settings from: '${settingsPath}'`);
+
+let app = express();
+let server = http.createServer(app);
 
 if(fs.existsSync(settingsPath)){
 	settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
@@ -51,9 +57,63 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 
 // various handlers that are invoked by accessing http://<server>/<handler>
 // e.g. http://localhost:3000/observe_status?workerID=abc
-let handlers = {
+
+{ // INSTALL HANDLERS
+
+	app.use(cors({credentials: true, origin: true}));
+
+	if(settings.authenticate){
+		app.use(function (req, res, next) {
+			var nodeSSPI = require('node-sspi');
+			var nodeSSPIObj = new nodeSSPI({
+				retrieveGroups: true
+			});
+			
+			//console.log("=== authenticate === ");
+			
+			nodeSSPIObj.authenticate(req, res, function(err){
+				//console.log("authenticated");
+				
+				//if (req.connection.userGroups) {
+				//	console.log(req.connection.userGroups.join(", "));
+				//}else{
+				//	console.log("no authentication");
+				//}
+				
+				
+				//console.log(err);
+				res.finished || next();
+			});
+		});
+	}
+
+	app.use("/authentication", function (req, res, next) {
+		
+		if(!settings.authenticate){
+			res.send(`authentication disabled`);
+			return;
+		}
+		
+		
+		let user = req.connection.user;
+		let username = user.substring(user.lastIndexOf("\\") + 1);
+		
+		let msg = `user: ${req.connection.user} - ${username}<br>
+		groups: <br>`;
 	
-	"start_extract_region_worker": function(request, response){
+		if (req.connection.userGroups) {
+			msg += req.connection.userGroups.join("<br>");
+		}else{
+			msg += "no authentication";
+		}
+	
+		res.send(msg);
+	});
+
+	app.use("/start_extract_region_worker", function(request, response, next){
+		
+		console.log("start_extract_region_worker");
+		
 		let purl = url.parse(request.url, true);
 		let query = purl.query;
 		
@@ -88,6 +148,11 @@ let handlers = {
 			response.end(JSON.stringify(res, null, "\t"));
 		}else if(check.result === "BELOW_THRESHOLD"){
 			let worker = new PotreeExtractRegionWorker(pointcloud, box, minLevel, maxLevel);
+			
+			if(settings.authenticate){
+				worker.user = request.connection.user ? request.connection.user : null;
+			}
+			
 			worker.start();
 			
 			let res = {
@@ -98,9 +163,9 @@ let handlers = {
 			
 			response.end(JSON.stringify(res, null, "\t"));
 		}
-	},
+	});
 	
-	"get_las": function(request, response){
+	app.use("/get_las", function(request, response){
 		let purl = url.parse(request.url, true);
 		let query = purl.query;
 		
@@ -109,12 +174,37 @@ let handlers = {
 		
 		if(worker){
 			
-			let filePath = worker.outPath;
+			// AUTHENTICATION & AUTHORIZATION
+			if(settings.authenticate){
+				if(request.connection.user){
+					if(request.connection.user !== worker.user){
+						let res = {
+							status: "ERROR_AUTHORIZATION_FAILED",
+							workerID: worker.uuid,
+							message: `Authorization failed. Did you try to download someone elses results?`
+						};
+						
+						response.end(JSON.stringify(res, null, "\t"));
+						return;
+					}
+				}else{
+					let res = {
+						status: "ERROR_AUTHENTICATION_FAILED",
+						workerID: worker.uuid,
+						message: `Authentication failed, anonymous access not permitted.`
+					};
+					
+					response.end(JSON.stringify(res, null, "\t"));
+					return;
+				}
+			}
+			
+			let filePath = worker.archivePath;
 			let stat = fs.statSync(filePath);
 
 			response.writeHead(200, {
 				'Content-Type': 'application/octet-stream',
-				"Content-Disposition": `attachment;filename=${worker.name}.las`,
+				"Content-Disposition": `attachment;filename=${worker.name}.zip`,
 				'Content-Length': stat.size,
 				"Connection": "Close"
 			});
@@ -124,7 +214,9 @@ let handlers = {
 				response.write(data);
 			});
 			
-			readStream.on('finish', function() {
+			readStream.on('close', function() {
+				worker.deleteArtifacts();
+				
 				response.end();        
 			});
 			
@@ -133,11 +225,9 @@ let handlers = {
 			response.statusCode = 404;
 			response.end("");
 		}
-		
-		
-	},
+	});
 	
-	"observe_status" : function(request, response){
+	app.use("/observe_status", function(request, response){
 		let purl = url.parse(request.url, true);
 		let query = purl.query;
 		
@@ -190,9 +280,9 @@ let handlers = {
 		};
 		
 		observe();
-	},
+	});
 	
-	"get_status": function(request, response){
+	app.use("/get_status", function(request, response){
 		let purl = url.parse(request.url, true);
 		let query = purl.query;
 		
@@ -277,93 +367,102 @@ let handlers = {
 				response.end(JSON.stringify(worker.getStatus(), null, "\t"));
 			}
 		}
-	}
-};
-
-
-function handleRequestFile(request, response){
-	//http://localhost:3000/resources/server.css
+	});
 	
-	let purl = url.parse(request.url, true);
-	let query = purl.query;
-	
-	
-	let file = `${settings.wwwroot}${purl.pathname}`;
-	
-	if(fs.existsSync(file)){
-		// TODO proper mime type handling, e.g.https://www.npmjs.com/package/mime-types
-		if(file.toLowerCase().endsWith(".css")){
-			response.writeHead(200, {
-				'Content-Type': 'text/css'
-			});
-		}else{
-			response.writeHead(200, {
-				'Content-Type': 'application/octet-stream'
-			});
-		}
-		
-		let readStream = fs.createReadStream(file);
-		readStream.pipe(response);
-		
-		readStream.on('close', response.end);
-		readStream.on('error', response.end);
-	}else{
-		response.statusCode = 404;
-		response.end("");
-	}
-	
-}
-
-
-
-function startServer(){
-
-	let requestHandler = (request, response) => {  
-		console.log();
-		console.log("======= REQUEST START =======");
-		
-		let purl = url.parse(request.url, true);
-		let basename = purl.pathname.substr(purl.pathname.lastIndexOf("/") + 1);
-		let query = purl.query;
-		
-		console.log("date: ", new Date().toISOString());
-		console.log("from: ", request.headers.host);
-		console.log("request: ", request.url);
-		
-		if(request.headers.origin){
-			response.setHeader('Access-Control-Allow-Origin', request.headers.origin);
-		}
-		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
-		
-		let handler = null;
-		if(request.url === "/"){
-			handler = handlers["get_status"];
-		}else if(handlers[basename]){
-			handler = handlers[basename];
-		}else{
-			handler = handleRequestFile;
-		}
-		
-		if(handler){
-			handler(request, response);
-		}else{
-			response.statusCode = 404;
-			response.end("");
-		}
-		
-		
-		console.log("======= REQUEST END =======");
-	};
-
-	let server = http.createServer(requestHandler);
-
-	server.listen(settings.port, (err) => {  
-		if (err) {
-			return console.log('could not start server', err)
-		}
-		
-		console.log(`server is listening on ${settings.port}`)
+	app.use("/test", (req, res, next) => {
+		console.log("TEST!!")
+		res.send("woah");
 	});
 }
 
-startServer();
+
+//function handleRequestFile(request, response){
+//	//http://localhost:3000/resources/server.css
+//	
+//	let purl = url.parse(request.url, true);
+//	let query = purl.query;
+//	
+//	
+//	let file = `${settings.wwwroot}${purl.pathname}`;
+//	
+//	if(fs.existsSync(file)){
+//		// TODO proper mime type handling, e.g.https://www.npmjs.com/package/mime-types
+//		if(file.toLowerCase().endsWith(".css")){
+//			response.writeHead(200, {
+//				'Content-Type': 'text/css'
+//			});
+//		}else{
+//			response.writeHead(200, {
+//				'Content-Type': 'application/octet-stream'
+//			});
+//		}
+//		
+//		let readStream = fs.createReadStream(file);
+//		readStream.pipe(response);
+//		
+//		readStream.on('close', response.end);
+//		readStream.on('error', response.end);
+//	}else{
+//		response.statusCode = 404;
+//		response.end("");
+//	}
+//	
+//}
+
+
+
+server.listen(settings.port, () => {
+	console.log(`server is listening on ${settings.port}`)
+});
+
+//function startServer(){
+//
+//	let requestHandler = (request, response) => {  
+//		console.log();
+//		console.log("======= REQUEST START =======");
+//		
+//		let purl = url.parse(request.url, true);
+//		let basename = purl.pathname.substr(purl.pathname.lastIndexOf("/") + 1);
+//		let query = purl.query;
+//		
+//		console.log("date: ", new Date().toISOString());
+//		console.log("from: ", request.headers.host);
+//		console.log("request: ", request.url);
+//		
+//		if(request.headers.origin){
+//			response.setHeader('Access-Control-Allow-Origin', request.headers.origin);
+//		}
+//		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
+//		
+//		let handler = null;
+//		if(request.url === "/"){
+//			handler = handlers["get_status"];
+//		}else if(handlers[basename]){
+//			handler = handlers[basename];
+//		}else{
+//			handler = handleRequestFile;
+//		}
+//		
+//		if(handler){
+//			handler(request, response);
+//		}else{
+//			response.statusCode = 404;
+//			response.end("");
+//		}
+//		
+//		
+//		console.log("======= REQUEST END =======");
+//	};
+//
+//	let server = http.createServer(requestHandler);
+//
+//	server.listen(settings.port, (err) => {  
+//		if (err) {
+//			return console.log('could not start server', err)
+//		}
+//		
+//		console.log(`server is listening on ${settings.port}`)
+//	});
+//}
+//
+//startServer();
