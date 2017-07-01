@@ -1,9 +1,9 @@
 {
 	"port": 3000,
-	"wwwroot": "C:/dev",
-	"serverWorkingDirectory": "C:/dev/",
-	"outputDirectory": "C:/dev/temp",
-	"elevationProfileExe": "./bin/PotreeElevationProfile.exe",
-	"extractRegionExe": "./bin/PotreeExtractRegion.exe",
-	"maxPointsProcessedThreshold": 10000000
+	"wwwroot": "D:/dev/workspaces/PotreeServer/workers/build",
+	"serverWorkingDirectory": "D:/dev/workspaces/potree/develop/",
+	"outputDirectory": "D:/dev/temp",
+	"extractRegionExe": "D:/dev/workspaces/PotreeServer/workers/build/potree_server/bin/PotreeExtractRegion.exe",
+	"maxPointsProcessedThreshold": 10000000,
+	"maxActiveWorkers": 1
 }

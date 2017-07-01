@@ -19,9 +19,18 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		let purl = url.parse(this.pointcloud);
 		let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname;
-		let outPath = `${settings.outputDirectory}/${this.uuid}/result.las`;
 		
-		console.log("realPointcloudPath", realPointcloudPath);
+		let year = this.started.getFullYear().toString();
+		let month = (this.started.getMonth()+1).toString().padStart(2, "0");
+		let day = this.started.getDate().toString().padStart(2, "0");
+		let hours = this.started.getHours().toString().padStart(2, "0");
+		let minutes = this.started.getMinutes().toString().padStart(2, "0");
+		let seconds = this.started.getSeconds().toString().padStart(2, "0");
+		this.name = `${year}.${month}.${day}_${hours}.${minutes}.${seconds}`;
+		//let outPath = `${settings.outputDirectory}/${this.uuid}/result.las`;
+		let outPath = `${settings.outputDirectory}/${this.uuid}/${this.name}.las`;
+		
+		//console.log("realPointcloudPath", realPointcloudPath);
 		
 		let args = [
 			realPointcloudPath,
@@ -33,10 +42,10 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		this.outPath = outPath;
 		
-		console.log("spawing region extraction task with arguments: ");
-		console.log(args);
+		//console.log("spawing region extraction task with arguments: ");
+		//console.log(args);
 		
-		let process = spawn(`${__dirname}/${settings.extractRegionExe}`, args, {shell: false});
+		let process = spawn(settings.extractRegionExe, args, {shell: false});
 		process.on('close', (code) => {
 			this.done();
 		});

@@ -1,23 +1,24 @@
 {
-	"name" : "PotreeServer",
-	"private" : true,
-	"version" : "0.0.1",
-	"description" : "Server Backend for Potree",
-	"dependencies" : {
-		"gulp" : "*",
-		"gulp-size" : "*",
-		"gulp-concat" : "*",
-		"gulp-uglify" : "*",
-		"gulp-rename" : "*"
+	"name": "PotreeServer",
+	"private": true,
+	"version": "0.0.1",
+	"description": "Server Backend for Potree",
+	"dependencies": {
+		"gulp": "*",
+		"gulp-concat": "*",
+		"gulp-rename": "*",
+		"gulp-size": "*",
+		"gulp-uglify": "*",
+		"uuid": "^3.1.0"
 	},
-	"author" : {},
-	"license" : "",
-	"devDependencies" : {
-		"gulp" : "~3.5.2",
-		"gulp-concat" : "~2.1.7",
-		"gulp-connect" : "^2.3.1",
-		"gulp-rename" : "~1.0.0",
-		"gulp-util" : "~2.2.20",
-		"through" : "~2.3.4"
+	"author": {},
+	"license": "",
+	"devDependencies": {
+		"gulp": "~3.5.2",
+		"gulp-concat": "~2.1.7",
+		"gulp-connect": "^2.3.1",
+		"gulp-rename": "~1.0.0",
+		"gulp-util": "~2.2.20",
+		"through": "~2.3.4"
 	}
 }

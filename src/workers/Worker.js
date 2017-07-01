@@ -19,7 +19,7 @@ const workerStatus = {
 	ACTIVE: 1,
 	CANCELED: 2,
 	FINISHED: 3
-}
+};
 
 class Worker{
 	constructor(){
