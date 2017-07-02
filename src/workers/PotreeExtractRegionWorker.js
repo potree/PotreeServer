@@ -18,7 +18,7 @@ class PotreeExtractRegionWorker extends Worker{
 		super.start();
 		
 		let purl = url.parse(this.pointcloud);
-		let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname;
+		let realPointcloudPath = settings.wwwroot + purl.pathname;
 		
 		let year = this.started.getFullYear().toString();
 		let month = (this.started.getMonth()+1).toString().padStart(2, "0");
@@ -50,7 +50,7 @@ class PotreeExtractRegionWorker extends Worker{
 		//console.log("spawing region extraction task with arguments: ");
 		//console.log(args);
 		
-		let process = spawn(settings.extractRegionExe, args, {shell: false, detached: true});
+		let process = spawn(getExtractRegionExe(), args, {shell: false, detached: true});
 		process.on('close', (code) => {
 			//this.done();
 			this.archive();

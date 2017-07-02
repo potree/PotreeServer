@@ -10,8 +10,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-//console.log(__filename);
-//console.log(__dirname);
+console.log("filename", __filename);
+console.log("dirname", __dirname);
 
 let settingsPath = `${__dirname}/settings.json`;
 let settings = null;
@@ -29,6 +29,19 @@ if(fs.existsSync(settingsPath)){
 	process.exit()
 }
 
+function getExtractRegionExe(){
+	let exe = null;
+	if(fs.existsSync(settings.extractRegionExe)){
+		exe = settings.extractRegionExe;
+	}else if(fs.existsSync(`${__dirname}/${settings.extractRegionExe}`)){
+		exe = `${__dirname}/${settings.extractRegionExe}`;
+	}else{
+		console.log("extractRegionExe not found at expected location: ", settings.extractRegionExe);
+	}
+	
+	return exe;
+}
+
 const workers = {
 	active: new Map(),
 	finished: new Map()
@@ -37,7 +50,7 @@ const workers = {
 function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, threshold){
 	
 	let purl = url.parse(pointcloud);
-	let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname.substr(1);
+	let realPointcloudPath = settings.wwwroot + purl.pathname.substr(1);
 	
 	console.log("realPointcloudPath", realPointcloudPath);
 	
@@ -50,7 +63,8 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 		"--check-threshold", threshold
 	];
 	
-	let result = spawnSync(settings.extractRegionExe, args, {shell: false, detached: true});
+	
+	let result = spawnSync(getExtractRegionExe(), args, {shell: false, detached: true});
 	
 	return result;
 }
@@ -86,6 +100,16 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 			});
 		});
 	}
+	
+	app.use( (req, res, next) => {
+		console.log("======= REQUEST START =======");
+		console.log("date: ", new Date().toISOString());
+		console.log("host: ", req.headers.host);
+		console.log("request: ", req.url);
+		
+		next();
+	});
+
 
 	app.use("/authentication", function (req, res, next) {
 		
@@ -375,94 +399,6 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 	});
 }
 
-
-//function handleRequestFile(request, response){
-//	//http://localhost:3000/resources/server.css
-//	
-//	let purl = url.parse(request.url, true);
-//	let query = purl.query;
-//	
-//	
-//	let file = `${settings.wwwroot}${purl.pathname}`;
-//	
-//	if(fs.existsSync(file)){
-//		// TODO proper mime type handling, e.g.https://www.npmjs.com/package/mime-types
-//		if(file.toLowerCase().endsWith(".css")){
-//			response.writeHead(200, {
-//				'Content-Type': 'text/css'
-//			});
-//		}else{
-//			response.writeHead(200, {
-//				'Content-Type': 'application/octet-stream'
-//			});
-//		}
-//		
-//		let readStream = fs.createReadStream(file);
-//		readStream.pipe(response);
-//		
-//		readStream.on('close', response.end);
-//		readStream.on('error', response.end);
-//	}else{
-//		response.statusCode = 404;
-//		response.end("");
-//	}
-//	
-//}
-
-
-
 server.listen(settings.port, () => {
 	console.log(`server is listening on ${settings.port}`)
 });
-
-//function startServer(){
-//
-//	let requestHandler = (request, response) => {  
-//		console.log();
-//		console.log("======= REQUEST START =======");
-//		
-//		let purl = url.parse(request.url, true);
-//		let basename = purl.pathname.substr(purl.pathname.lastIndexOf("/") + 1);
-//		let query = purl.query;
-//		
-//		console.log("date: ", new Date().toISOString());
-//		console.log("from: ", request.headers.host);
-//		console.log("request: ", request.url);
-//		
-//		if(request.headers.origin){
-//			response.setHeader('Access-Control-Allow-Origin', request.headers.origin);
-//		}
-//		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
-//		
-//		let handler = null;
-//		if(request.url === "/"){
-//			handler = handlers["get_status"];
-//		}else if(handlers[basename]){
-//			handler = handlers[basename];
-//		}else{
-//			handler = handleRequestFile;
-//		}
-//		
-//		if(handler){
-//			handler(request, response);
-//		}else{
-//			response.statusCode = 404;
-//			response.end("");
-//		}
-//		
-//		
-//		console.log("======= REQUEST END =======");
-//	};
-//
-//	let server = http.createServer(requestHandler);
-//
-//	server.listen(settings.port, (err) => {  
-//		if (err) {
-//			return console.log('could not start server', err)
-//		}
-//		
-//		console.log(`server is listening on ${settings.port}`)
-//	});
-//}
-//
-//startServer();
