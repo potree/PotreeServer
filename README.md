@@ -1,18 +1,41 @@
 
+# Development
 
-# install additional node packages
-npm install uuid
+install dependencies from package.json
+
+    npm install
+
+start server
+
+    cd build/potree_server
+    node potree_server.js
+
+watch and rebuild/restart on changes in source 
+
+    gulp watch
 
 
-# start server
-node src/potree_server.js
+# Installation
+
+Copy build/potree_server to any location
+
+Install dependencies form package.json and run server
+
+    npm install 
+	node potree_server.js 
+	
+Alternatively, you can use pm2 to manage the server process 
+
+    npm install 
+	npm install pm2 -g 
+	pm2 start potree_server.js 
+	
+	# list running processes 
+	pm2 list 
+	
+	# stop process by name 
+	pm2 stop potree_server
 
 
 
 
-
-http://localhost:3000/get_profile?minLOD=0&maxLOD=3&width=150&coordinates={693550.968,3915914.169},{693890.618,3916387.819},{694584.820,3916458.180}&pointCloud=http://localhost/dev/pointclouds/converted/CA13/cloud.js&attributes=
-
-http://localhost:3000/start_profile_worker?minLOD=0&maxLOD=3&width=150&coordinates={693550.968,3915914.169},{693890.618,3916387.819},{694584.820,3916458.180}&pointCloud=http://localhost/dev/pointclouds/converted/CA13/cloud.js&attributes=
-
-http://localhost:3000/get_las?workerID=6b79d985-9177-4f4f-9f55-3dd147c42071

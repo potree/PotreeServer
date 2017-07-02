@@ -24,6 +24,9 @@ let paths = {
 	settings: [
 		"resources/settings.json"
 	],
+	package: [
+		"resources/package.json"
+	],
 	resources: [
 		"resources/**/*"
 	],
@@ -40,6 +43,9 @@ gulp.task("build", [], function(){
 		.pipe(gulp.dest('build/potree_server'));
 		
 	gulp.src(paths.settings)
+		.pipe(gulp.dest('build/potree_server'));
+		
+	gulp.src(paths.package)
 		.pipe(gulp.dest('build/potree_server'));
 		
 	gulp.src(paths.resources)

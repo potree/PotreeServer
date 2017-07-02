@@ -50,7 +50,7 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 		"--check-threshold", threshold
 	];
 	
-	let result = spawnSync(settings.extractRegionExe, args, {shell: false});
+	let result = spawnSync(settings.extractRegionExe, args, {shell: false, detached: true});
 	
 	return result;
 }

@@ -50,7 +50,7 @@ class PotreeExtractRegionWorker extends Worker{
 		//console.log("spawing region extraction task with arguments: ");
 		//console.log(args);
 		
-		let process = spawn(settings.extractRegionExe, args, {shell: false});
+		let process = spawn(settings.extractRegionExe, args, {shell: false, detached: true});
 		process.on('close', (code) => {
 			//this.done();
 			this.archive();
@@ -65,7 +65,7 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		let output = fs.createWriteStream(this.archivePath);
 		let archive = archiver('zip', {
-			zlib: { level: 9 }
+			zlib: { level: 1 }
 		});
 
 		output.on('close', () => {
