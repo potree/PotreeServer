@@ -99,7 +99,7 @@ class PotreeExtractRegionWorker extends Worker{
 		super.done();
 		
 		// delete artifacts after an hour, to avoid clogging the filesystem
-		setTimeout(this.deleteArtifacts, 3600 * 1000)
+		setTimeout(this.deleteArtifacts.bind(this), settings.deleteArtifactsAfter)
 	}
 	
 	deleteArtifacts(){
