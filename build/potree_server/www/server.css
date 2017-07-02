@@ -1,0 +1,35 @@
+
+.centering{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+}
+
+.panel{
+	border: 1px solid black;
+	position: absolute;
+}
+
+.titlebar{
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-weight: bold;
+	margin: 5px; 
+}
+
+.workerdata{
+	display: flex;
+	margin: 5px;
+}
+
+.content{
+	display: block;
+	margin: 5px;
+}
+
+td th{
+	padding: 2px 15px 2px 5px;
+}

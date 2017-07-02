@@ -1,0 +1,16 @@
+{
+	"port": 3000,
+	"wwwroot": "D:/dev/workspaces/PotreeServer/workers/build",
+	"serverWorkingDirectory": "D:/dev/workspaces/potree/develop/",
+	"outputDirectory": "D:/dev/temp",
+	"extractRegionExe": "D:/dev/workspaces/PotreeServer/workers/build/potree_server/bin/PotreeExtractRegion.exe",
+
+	"maxActiveWorkers": 1,
+	"authenticate": true,
+	
+	"#":"Only requests with an estimate below this threshold will be processed",
+	"maxPointsProcessedThreshold": 10000000,
+
+	"#":"Time until user requests are removed from disk in seconds",
+	"deleteArtifactsAfter": 3600000
+}
