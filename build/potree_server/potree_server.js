@@ -91,10 +91,10 @@ class PotreeExtractRegionWorker extends Worker{
 	// to an oriented box in space. 
 	// Points within that oriented box are considered "inside" and will be extracted.
 	//
-	constructor(pointcloud, box, minLevel, maxLevel){
+	constructor(pointclouds, box, minLevel, maxLevel){
 		super();
 		
-		this.pointcloud = pointcloud;
+		this.pointclouds = pointclouds;
 		this.box = box;
 		this.minLevel = minLevel;
 		this.maxLevel = maxLevel;
@@ -103,8 +103,10 @@ class PotreeExtractRegionWorker extends Worker{
 	start(){
 		super.start();
 		
-		let purl = url.parse(this.pointcloud);
-		let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname;
+		let purls = this.pointclouds.map(p => url.parse(p));
+		let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
+		
+		console.log("realPointcloudPaths", realPointcloudPaths);
 		
 		let year = this.started.getFullYear().toString();
 		let month = (this.started.getMonth()+1).toString().padStart(2, "0");
@@ -125,7 +127,7 @@ class PotreeExtractRegionWorker extends Worker{
 		//console.log("realPointcloudPath", realPointcloudPath);
 		
 		let args = [
-			realPointcloudPath,
+			...realPointcloudPaths,
 			"--box", this.box,
 			"--min-level", this.minLevel, 
 			"--max-level", this.maxLevel, 
@@ -133,10 +135,10 @@ class PotreeExtractRegionWorker extends Worker{
 			"--metadata", this.user,
 		];
 		
-		//console.log("spawing region extraction task with arguments: ");
-		//console.log(args);
+		console.log("spawing region extraction task with arguments: ");
+		console.log(args);
 		
-		let process = spawn(settings.extractRegionExe, args, {shell: false, detached: true});
+		let process = spawn(getExtractRegionExe(), args, {shell: false, detached: true});
 		process.on('close', (code) => {
 			//this.done();
 			this.archive();
@@ -283,8 +285,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-//console.log(__filename);
-//console.log(__dirname);
+console.log("filename", __filename);
+console.log("dirname", __dirname);
 
 let settingsPath = `${__dirname}/settings.json`;
 let settings = null;
@@ -302,20 +304,33 @@ if(fs.existsSync(settingsPath)){
 	process.exit()
 }
 
+function getExtractRegionExe(){
+	let exe = null;
+	if(fs.existsSync(settings.extractRegionExe)){
+		exe = settings.extractRegionExe;
+	}else if(fs.existsSync(`${__dirname}/${settings.extractRegionExe}`)){
+		exe = `${__dirname}/${settings.extractRegionExe}`;
+	}else{
+		console.log("extractRegionExe not found at expected location: ", settings.extractRegionExe);
+	}
+	
+	return exe;
+}
+
 const workers = {
 	active: new Map(),
 	finished: new Map()
 };
 
-function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, threshold){
+function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, threshold){
 	
-	let purl = url.parse(pointcloud);
-	let realPointcloudPath = settings.serverWorkingDirectory + purl.pathname.substr(1);
+	let purls = pointclouds.map(p => url.parse(p));
+	let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
 	
-	console.log("realPointcloudPath", realPointcloudPath);
+	console.log("realPointcloudPaths", realPointcloudPaths);
 	
 	let args = [
-		realPointcloudPath,
+		...realPointcloudPaths,
 		"--box", box,
 		"--min-level", minLevel, 
 		"--max-level", maxLevel, 
@@ -323,7 +338,8 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 		"--check-threshold", threshold
 	];
 	
-	let result = spawnSync(settings.extractRegionExe, args, {shell: false, detached: true});
+	
+	let result = spawnSync(getExtractRegionExe(), args, {shell: false, detached: true});
 	
 	return result;
 }
@@ -359,6 +375,16 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 			});
 		});
 	}
+	
+	app.use( (req, res, next) => {
+		console.log("======= REQUEST START =======");
+		console.log("date: ", new Date().toISOString());
+		console.log("host: ", req.headers.host);
+		console.log("request: ", req.url);
+		
+		next();
+	});
+
 
 	app.use("/authentication", function (req, res, next) {
 		
@@ -395,9 +421,9 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 		let minLevel = v(query.minLOD, 0);
 		let maxLevel = v(query.maxLOD, 5);
 		let box = v(query.box, null);
-		let pointcloud = v(query.pointCloud, null);
+		let pointclouds = v(query["pointcloud[]"], []);
 		
-		let check = potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
+		let check = potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
 
 		try{
 			check = JSON.parse(check.stdout.toString());
@@ -420,7 +446,7 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 			
 			response.end(JSON.stringify(res, null, "\t"));
 		}else if(check.result === "BELOW_THRESHOLD"){
-			let worker = new PotreeExtractRegionWorker(pointcloud, box, minLevel, maxLevel);
+			let worker = new PotreeExtractRegionWorker(pointclouds, box, minLevel, maxLevel);
 			
 			if(settings.authenticate){
 				worker.user = request.connection.user ? request.connection.user : null;
@@ -643,99 +669,24 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 	});
 	
 	app.use("/test", (req, res, next) => {
-		console.log("TEST!!")
-		res.send("woah");
+		console.log("start_extract_region_worker");
+		
+		let purl = url.parse(req.url, true);
+		let query = purl.query;
+		
+		let v = (value, def) => ((value === undefined) ? def : value);
+		
+		//let minLevel = v(query.minLOD, 0);
+		//let maxLevel = v(query.maxLOD, 5);
+		//let box = v(query.box, null);
+		//let pointcloud = v(query.pointcloud, null);
+		
+		console.log(query);
+		
+		res.end();
 	});
 }
-
-
-//function handleRequestFile(request, response){
-//	//http://localhost:3000/resources/server.css
-//	
-//	let purl = url.parse(request.url, true);
-//	let query = purl.query;
-//	
-//	
-//	let file = `${settings.wwwroot}${purl.pathname}`;
-//	
-//	if(fs.existsSync(file)){
-//		// TODO proper mime type handling, e.g.https://www.npmjs.com/package/mime-types
-//		if(file.toLowerCase().endsWith(".css")){
-//			response.writeHead(200, {
-//				'Content-Type': 'text/css'
-//			});
-//		}else{
-//			response.writeHead(200, {
-//				'Content-Type': 'application/octet-stream'
-//			});
-//		}
-//		
-//		let readStream = fs.createReadStream(file);
-//		readStream.pipe(response);
-//		
-//		readStream.on('close', response.end);
-//		readStream.on('error', response.end);
-//	}else{
-//		response.statusCode = 404;
-//		response.end("");
-//	}
-//	
-//}
-
-
 
 server.listen(settings.port, () => {
 	console.log(`server is listening on ${settings.port}`)
 });
-
-//function startServer(){
-//
-//	let requestHandler = (request, response) => {  
-//		console.log();
-//		console.log("======= REQUEST START =======");
-//		
-//		let purl = url.parse(request.url, true);
-//		let basename = purl.pathname.substr(purl.pathname.lastIndexOf("/") + 1);
-//		let query = purl.query;
-//		
-//		console.log("date: ", new Date().toISOString());
-//		console.log("from: ", request.headers.host);
-//		console.log("request: ", request.url);
-//		
-//		if(request.headers.origin){
-//			response.setHeader('Access-Control-Allow-Origin', request.headers.origin);
-//		}
-//		response.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
-//		
-//		let handler = null;
-//		if(request.url === "/"){
-//			handler = handlers["get_status"];
-//		}else if(handlers[basename]){
-//			handler = handlers[basename];
-//		}else{
-//			handler = handleRequestFile;
-//		}
-//		
-//		if(handler){
-//			handler(request, response);
-//		}else{
-//			response.statusCode = 404;
-//			response.end("");
-//		}
-//		
-//		
-//		console.log("======= REQUEST END =======");
-//	};
-//
-//	let server = http.createServer(requestHandler);
-//
-//	server.listen(settings.port, (err) => {  
-//		if (err) {
-//			return console.log('could not start server', err)
-//		}
-//		
-//		console.log(`server is listening on ${settings.port}`)
-//	});
-//}
-//
-//startServer();

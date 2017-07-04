@@ -47,15 +47,15 @@ const workers = {
 	finished: new Map()
 };
 
-function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, threshold){
+function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, threshold){
 	
-	let purl = url.parse(pointcloud);
-	let realPointcloudPath = settings.wwwroot + purl.pathname.substr(1);
+	let purls = pointclouds.map(p => url.parse(p));
+	let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
 	
-	console.log("realPointcloudPath", realPointcloudPath);
+	console.log("realPointcloudPaths", realPointcloudPaths);
 	
 	let args = [
-		realPointcloudPath,
+		...realPointcloudPaths,
 		"--box", box,
 		"--min-level", minLevel, 
 		"--max-level", maxLevel, 
@@ -146,9 +146,9 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 		let minLevel = v(query.minLOD, 0);
 		let maxLevel = v(query.maxLOD, 5);
 		let box = v(query.box, null);
-		let pointcloud = v(query.pointCloud, null);
+		let pointclouds = v(query["pointcloud[]"], []);
 		
-		let check = potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
+		let check = potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
 
 		try{
 			check = JSON.parse(check.stdout.toString());
@@ -171,7 +171,7 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 			
 			response.end(JSON.stringify(res, null, "\t"));
 		}else if(check.result === "BELOW_THRESHOLD"){
-			let worker = new PotreeExtractRegionWorker(pointcloud, box, minLevel, maxLevel);
+			let worker = new PotreeExtractRegionWorker(pointclouds, box, minLevel, maxLevel);
 			
 			if(settings.authenticate){
 				worker.user = request.connection.user ? request.connection.user : null;
@@ -394,8 +394,21 @@ function potreeCheckRegionThreshold(pointcloud, box, minLevel, maxLevel, thresho
 	});
 	
 	app.use("/test", (req, res, next) => {
-		console.log("TEST!!")
-		res.send("woah");
+		console.log("start_extract_region_worker");
+		
+		let purl = url.parse(req.url, true);
+		let query = purl.query;
+		
+		let v = (value, def) => ((value === undefined) ? def : value);
+		
+		//let minLevel = v(query.minLOD, 0);
+		//let maxLevel = v(query.maxLOD, 5);
+		//let box = v(query.box, null);
+		//let pointcloud = v(query.pointcloud, null);
+		
+		console.log(query);
+		
+		res.end();
 	});
 }
 

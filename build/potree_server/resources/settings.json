@@ -1,9 +1,8 @@
 {
 	"port": 3000,
-	"wwwroot": "D:/dev/workspaces/PotreeServer/workers/build",
-	"serverWorkingDirectory": "D:/dev/workspaces/potree/develop/",
+	"wwwroot": "D:/dev/workspaces/potree/develop/",
 	"outputDirectory": "D:/dev/temp",
-	"extractRegionExe": "D:/dev/workspaces/PotreeServer/workers/build/potree_server/bin/PotreeExtractRegion.exe",
+	"extractRegionExe": "bin/PotreeExtractRegion.exe",
 
 	"maxActiveWorkers": 1,
 	"authenticate": true,

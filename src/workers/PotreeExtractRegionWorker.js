@@ -5,10 +5,10 @@ class PotreeExtractRegionWorker extends Worker{
 	// to an oriented box in space. 
 	// Points within that oriented box are considered "inside" and will be extracted.
 	//
-	constructor(pointcloud, box, minLevel, maxLevel){
+	constructor(pointclouds, box, minLevel, maxLevel){
 		super();
 		
-		this.pointcloud = pointcloud;
+		this.pointclouds = pointclouds;
 		this.box = box;
 		this.minLevel = minLevel;
 		this.maxLevel = maxLevel;
@@ -17,8 +17,10 @@ class PotreeExtractRegionWorker extends Worker{
 	start(){
 		super.start();
 		
-		let purl = url.parse(this.pointcloud);
-		let realPointcloudPath = settings.wwwroot + purl.pathname;
+		let purls = this.pointclouds.map(p => url.parse(p));
+		let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
+		
+		console.log("realPointcloudPaths", realPointcloudPaths);
 		
 		let year = this.started.getFullYear().toString();
 		let month = (this.started.getMonth()+1).toString().padStart(2, "0");
@@ -39,7 +41,7 @@ class PotreeExtractRegionWorker extends Worker{
 		//console.log("realPointcloudPath", realPointcloudPath);
 		
 		let args = [
-			realPointcloudPath,
+			...realPointcloudPaths,
 			"--box", this.box,
 			"--min-level", this.minLevel, 
 			"--max-level", this.maxLevel, 
@@ -47,8 +49,8 @@ class PotreeExtractRegionWorker extends Worker{
 			"--metadata", this.user,
 		];
 		
-		//console.log("spawing region extraction task with arguments: ");
-		//console.log(args);
+		console.log("spawing region extraction task with arguments: ");
+		console.log(args);
 		
 		let process = spawn(getExtractRegionExe(), args, {shell: false, detached: true});
 		process.on('close', (code) => {
