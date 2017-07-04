@@ -135,8 +135,8 @@ class PotreeExtractRegionWorker extends Worker{
 			"--metadata", this.user,
 		];
 		
-		console.log("spawing region extraction task with arguments: ");
-		console.log(args);
+		//console.log("spawing region extraction task with arguments: ");
+		//console.log(args);
 		
 		let process = spawn(getExtractRegionExe(), args, {shell: false, detached: true});
 		process.on('close', (code) => {
@@ -381,6 +381,12 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 		console.log("date: ", new Date().toISOString());
 		console.log("host: ", req.headers.host);
 		console.log("request: ", req.url);
+		
+		if(settings.authenticate){
+			if(req.connection.user){
+				console.log("user: ", req.connection.user );
+			}
+		}
 		
 		next();
 	});

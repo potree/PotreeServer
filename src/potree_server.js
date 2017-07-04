@@ -107,6 +107,12 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 		console.log("host: ", req.headers.host);
 		console.log("request: ", req.url);
 		
+		if(settings.authenticate){
+			if(req.connection.user){
+				console.log("user: ", req.connection.user );
+			}
+		}
+		
 		next();
 	});
 

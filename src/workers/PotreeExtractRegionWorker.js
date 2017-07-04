@@ -49,8 +49,8 @@ class PotreeExtractRegionWorker extends Worker{
 			"--metadata", this.user,
 		];
 		
-		console.log("spawing region extraction task with arguments: ");
-		console.log(args);
+		//console.log("spawing region extraction task with arguments: ");
+		//console.log(args);
 		
 		let process = spawn(getExtractRegionExe(), args, {shell: false, detached: true});
 		process.on('close', (code) => {
