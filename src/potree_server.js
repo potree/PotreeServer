@@ -153,6 +153,9 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 		let maxLevel = v(query.maxLOD, 5);
 		let box = v(query.box, null);
 		let pointclouds = v(query["pointcloud[]"], []);
+		if(!(pointclouds instanceof Array)){
+			pointclouds = [pointclouds];
+		}
 		
 		let check = potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
 
