@@ -1,33 +1,7 @@
 
-const archiver = require('archiver');
-const express = require("express");
-const cors = require('cors');
-const spawnSync = require('child_process').spawnSync;
-const spawn = require('child_process').spawn;
-const uuid = require('uuid');
-const url = require('url');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-
-console.log("filename", __filename);
-console.log("dirname", __dirname);
-
-let settingsPath = `${__dirname}/settings.json`;
-let settings = null;
-
-console.log("starting potree server");
-console.log(`Using settings from: '${settingsPath}'`);
 
 let app = express();
 let server = http.createServer(app);
-
-if(fs.existsSync(settingsPath)){
-	settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-}else{
-	console.err(`No settings found at: '${settingsPath}'`);
-	process.exit()
-}
 
 function getExtractRegionExe(){
 	let exe = null;
@@ -36,7 +10,7 @@ function getExtractRegionExe(){
 	}else if(fs.existsSync(`${__dirname}/${settings.extractRegionExe}`)){
 		exe = `${__dirname}/${settings.extractRegionExe}`;
 	}else{
-		console.log("extractRegionExe not found at expected location: ", settings.extractRegionExe);
+		logger.info(`extractRegionExe not found at expected location: ${settings.extractRegionExe}`);
 	}
 	
 	return exe;
@@ -52,7 +26,7 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 	let purls = pointclouds.map(p => url.parse(p));
 	let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
 	
-	console.log("realPointcloudPaths", realPointcloudPaths);
+	logger.info(`realPointcloudPaths ${realPointcloudPaths}`);
 	
 	let args = [
 		...realPointcloudPaths,
@@ -83,33 +57,33 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 				retrieveGroups: true
 			});
 			
-			//console.log("=== authenticate === ");
+			//logger.info("=== authenticate === ");
 			
 			nodeSSPIObj.authenticate(req, res, function(err){
-				//console.log("authenticated");
+				//logger.info("authenticated");
 				
 				//if (req.connection.userGroups) {
-				//	console.log(req.connection.userGroups.join(", "));
+				//	logger.info(req.connection.userGroups.join(", "));
 				//}else{
-				//	console.log("no authentication");
+				//	logger.info("no authentication");
 				//}
 				
 				
-				//console.log(err);
+				//logger.info(err);
 				res.finished || next();
 			});
 		});
 	}
 	
 	app.use( (req, res, next) => {
-		console.log("======= REQUEST START =======");
-		console.log("date: ", new Date().toISOString());
-		console.log("host: ", req.headers.host);
-		console.log("request: ", req.url);
+		logger.info("======= REQUEST START =======");
+		logger.info(`date: ${new Date().toISOString()}`);
+		logger.info(`host: ${req.headers.host}`);
+		logger.info(`request: ${req.url}`);
 		
 		if(settings.authenticate){
 			if(req.connection.user){
-				console.log("user: ", req.connection.user );
+				logger.info(`user: ${req.connection.user}`);
 			}
 		}
 		
@@ -142,7 +116,7 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 
 	app.use("/start_extract_region_worker", function(request, response, next){
 		
-		console.log("start_extract_region_worker");
+		logger.info("start_extract_region_worker");
 		
 		let purl = url.parse(request.url, true);
 		let query = purl.query;
@@ -157,13 +131,25 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 			pointclouds = [pointclouds];
 		}
 		
+		if(pointclouds.length === 0){
+			logger.warn("start_extract_region_worker was called without point cloud");
+			
+			let res = {
+				status: "ERROR_NO_POINTCLOUD_SPECIFIED",
+				message: "Failed to start a region extraction worker because no point cloud was specified"
+			};
+			
+			response.end(JSON.stringify(res, null, "\t"));
+			return;
+		}
+		
 		let check = potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
 
 		try{
 			check = JSON.parse(check.stdout.toString());
 		}catch(e){
-			console.log(e);
-			console.log("JSON: ", check.stdout.toString());
+			logger.info(e);
+			logger.info(`JSON: ${check.stdout.toString()}`);
 			let res = {
 				status: "ERROR_START_EXTRACT_REGION_WORKER_FAILED",
 				message: "Failed to start a region extraction worker"
@@ -403,7 +389,7 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 	});
 	
 	app.use("/test", (req, res, next) => {
-		console.log("start_extract_region_worker");
+		logger.info("start_extract_region_worker");
 		
 		let purl = url.parse(req.url, true);
 		let query = purl.query;
@@ -415,12 +401,12 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 		//let box = v(query.box, null);
 		//let pointcloud = v(query.pointcloud, null);
 		
-		console.log(query);
+		logger.info(query);
 		
 		res.end();
 	});
 }
 
 server.listen(settings.port, () => {
-	console.log(`server is listening on ${settings.port}`)
+	logger.info(`server is listening on ${settings.port}`)
 });

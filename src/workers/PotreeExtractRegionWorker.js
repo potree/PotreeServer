@@ -20,7 +20,7 @@ class PotreeExtractRegionWorker extends Worker{
 		let purls = this.pointclouds.map(p => url.parse(p));
 		let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
 		
-		console.log("realPointcloudPaths", realPointcloudPaths);
+		logger.info(`realPointcloudPaths ${realPointcloudPaths}`);
 		
 		let year = this.started.getFullYear().toString();
 		let month = (this.started.getMonth()+1).toString().padStart(2, "0");
@@ -38,7 +38,7 @@ class PotreeExtractRegionWorker extends Worker{
 		this.outDir = `${settings.outputDirectory}/${this.uuid}`;
 		this.outPath = `${settings.outputDirectory}/${this.uuid}/${this.name}.las`;
 
-		//console.log("realPointcloudPath", realPointcloudPath);
+		//logger.info("realPointcloudPath", realPointcloudPath);
 		
 		let args = [
 			...realPointcloudPaths,
@@ -49,8 +49,8 @@ class PotreeExtractRegionWorker extends Worker{
 			"--metadata", this.user,
 		];
 		
-		//console.log("spawing region extraction task with arguments: ");
-		//console.log(args);
+		//logger.info("spawing region extraction task with arguments: ");
+		//logger.info(args);
 		
 		let process = spawn(getExtractRegionExe(), args, {shell: false, detached: true});
 		process.on('close', (code) => {
@@ -63,7 +63,7 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		this.archivePath = `${settings.outputDirectory}/${this.uuid}/${this.name}.zip`;
 		
-		console.log(`archiving results to ${this.archivePath}`);
+		logger.info(`archiving results to ${this.archivePath}`);
 		
 		let output = fs.createWriteStream(this.archivePath);
 		let archive = archiver('zip', {
@@ -71,16 +71,16 @@ class PotreeExtractRegionWorker extends Worker{
 		});
 
 		output.on('close', () => {
-			console.log("archiving finished");
+			logger.info("archiving finished");
 			this.done();
 		});
 		
 		archive.on('warning', function(err) {
-			console.log("WARNING: encountered a problem while archiving results ", err.code);
+			logger.info(`WARNING: encountered a problem while archiving results ${err.code}`);
 		});
 		
 		archive.on('error', function(err) {
-			console.log("ERROR: encountered a problem while archiving results ", err.code);
+			logger.info(`ERROR: encountered a problem while archiving results ${err.code}`);
 		});
 		
 		archive.pipe(output);
@@ -108,7 +108,7 @@ class PotreeExtractRegionWorker extends Worker{
 		
 		// make sure we don't accidentally delete things like "/" or "C:/"
 		if(this.outPath.length < 5 || this.archivePath < 5 || this.outDir.length < 5){
-			console.log("artifacts not deleted because they appeared unsafe: ", this.outDir);
+			logger.info(`artifacts not deleted because they appeared unsafe: ${this.outDir}`);
 			return;
 		}
 		

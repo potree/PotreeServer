@@ -17,6 +17,8 @@ var node;
 
 let paths = {
 	server : [
+		"src/includes.js",
+		"src/stuff.js",
 		"src/workers/Worker.js",
 		"src/workers/PotreeExtractRegionWorker.js",
 		"src/potree_server.js",
