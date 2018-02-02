@@ -1,7 +1,45 @@
 
 
+const archiver = require('archiver');
+const express = require("express");
+const cors = require('cors');
+const spawnSync = require('child_process').spawnSync;
+const spawn = require('child_process').spawn;
+const uuid = require('uuid');
+const url = require('url');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const os = require("os");
+
+const {logger} = require("./logger.js");
+const {PotreeExtractRegionWorker} = require("./workers/PotreeExtractRegionWorker.js");
+const {PotreeLoader} = require("./PotreeLoader.js");
+
+
 let app = express();
 let server = http.createServer(app);
+
+process.on('uncaughtException', function(err) {
+	logger.error(err);
+	process.exit(1);
+});
+
+logger.info(`filename ${__filename}`);
+logger.info(`dirname ${__dirname}`);
+
+let settingsPath = `./resources/settings.json`;
+let settings = null;
+
+logger.info("starting potree server");
+logger.info(`Using settings from: '${settingsPath}'`);
+
+if(fs.existsSync(settingsPath)){
+	settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+}else{
+	logger.error(`No settings found at: '${settingsPath}'`);
+	process.exit()
+}
 
 function getExtractRegionExe(){
 	let exe = null;
@@ -91,13 +129,15 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 	});
 
 
-	app.use("/authentication", function (req, res, next) {
+	app.use("/authentication", (req, res, next) => {
 		
 		if(!settings.authenticate){
 			res.send(`authentication disabled`);
 			return;
 		}
 		
+		let pointcloud = PotreeLoader.load("D:/dev/pointclouds/archpro/heidentor/cloud.js");
+
 		let user = req.connection.user;
 		let username = user.substring(user.lastIndexOf("\\") + 1);
 		
@@ -111,6 +151,20 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 		}
 	
 		res.send(msg);
+	});
+
+	app.use("/test", (req, res, next) => {
+		
+
+		let value = req.connection.value;
+		
+		let pointcloud = PotreeLoader.load("D:/dev/pointclouds/archpro/heidentor/cloud.js");
+		//pointcloud.loadNode({name: "r12440"});
+		pointcloud.loadNode(pointcloud.root);
+
+		debugger;
+	
+		res.send("abcdefg");
 	});
 
 	app.use("/start_extract_region_worker", function(request, response, next){
@@ -235,7 +289,7 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 			readStream.on('close', function() {
 				worker.deleteArtifacts();
 				
-				response.end();        
+				response.end();
 			});
 			
 			return null;

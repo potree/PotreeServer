@@ -1,3 +1,6 @@
+
+const {findWorker, workerStatus, Worker} = require("./Worker");
+
 class PotreeExtractRegionWorker extends Worker{
 	
 	// box is a 4x4 matrix that specifies a transformation from a 
@@ -187,3 +190,5 @@ class PotreeExtractRegionWorker extends Worker{
 		return page;
 	}
 };
+
+exports.PotreeExtractRegionWorker = PotreeExtractRegionWorker;

@@ -64,7 +64,7 @@ gulp.task("server", function(){
 		node.kill();
 	}	
 	
-	node = spawn('node', ['./build/potree_server/potree_server.js'], {stdio: 'inherit'})
+	node = spawn('node', ["--inspect", './src/potree_server.js'], {stdio: 'inherit'})
 	node.on('close', (code) => {
 		if(code === 8){
 			gulp.log('Error detected, waiting for changes...');

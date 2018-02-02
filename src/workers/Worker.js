@@ -1,3 +1,6 @@
+
+
+
 function findWorker(uuid){
 	let activeWorker = workers.active.get(uuid);
 	
@@ -84,3 +87,7 @@ class Worker{
 		return page;
 	}
 };
+
+module.exports.findWorker = findWorker;
+module.exports.workerStatus = workerStatus;
+module.exports.Worker = Worker;

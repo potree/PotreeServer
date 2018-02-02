@@ -1,4 +1,6 @@
 
+const log4js = require('log4js');
+
 log4js.configure({
 	appenders: {
 		out: { 
@@ -24,32 +26,18 @@ log4js.configure({
 
 const logger = log4js.getLogger();
 
-process.on('uncaughtException', function(err) {
-	logger.error(err);
-	process.exit(1);
-});
 
+console.originalLog = console.log;
 console.log = function(...args){
 	logger.info(args.join(" "));
+	console.originalLog(...args);
 };
 
+
+console.originalError = console.error;
 console.error = function(...args){
 	logger.error(args.join(" "));
+	console.originalError(...args);
 };
 
-
-logger.info(`filename ${__filename}`);
-logger.info(`dirname ${__dirname}`);
-
-let settingsPath = `${__dirname}/settings.json`;
-let settings = null;
-
-logger.info("starting potree server");
-logger.info(`Using settings from: '${settingsPath}'`);
-
-if(fs.existsSync(settingsPath)){
-	settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-}else{
-	logger.error(`No settings found at: '${settingsPath}'`);
-	process.exit()
-}
+exports.logger = logger;
