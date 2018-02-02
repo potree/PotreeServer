@@ -1,0 +1,284 @@
+2018-02-01T14:06:36.461 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T14:06:36.461 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T14:06:36.461 INFO starting potree server
+2018-02-01T14:06:36.461 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T14:06:36.477 INFO server is listening on 3000
+2018-02-01T14:06:41.734 INFO ======= REQUEST START =======
+2018-02-01T14:06:41.737 INFO date: 2018-02-01T13:06:41.737Z
+2018-02-01T14:06:41.738 INFO host: localhost:3000
+2018-02-01T14:06:41.738 INFO request: /
+2018-02-01T14:06:41.739 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T14:06:41.787 INFO ======= REQUEST START =======
+2018-02-01T14:06:41.789 INFO date: 2018-02-01T13:06:41.789Z
+2018-02-01T14:06:41.790 INFO host: localhost:3000
+2018-02-01T14:06:41.790 INFO request: /favicon.ico
+2018-02-01T14:06:41.791 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T14:07:14.089 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T14:07:14.095 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T14:07:14.095 INFO starting potree server
+2018-02-01T14:07:14.096 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T14:07:14.101 INFO server is listening on 3000
+2018-02-01T14:07:54.689 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T14:07:54.705 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T14:07:54.705 INFO starting potree server
+2018-02-01T14:07:54.705 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T14:07:54.705 INFO server is listening on 3000
+2018-02-01T14:08:13.467 INFO ======= REQUEST START =======
+2018-02-01T14:08:13.468 INFO date: 2018-02-01T13:08:13.468Z
+2018-02-01T14:08:13.468 INFO host: localhost:3000
+2018-02-01T14:08:13.468 INFO request: /authentication
+2018-02-01T14:08:13.468 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T14:08:43.698 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T14:08:43.714 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T14:08:43.714 INFO starting potree server
+2018-02-01T14:08:43.715 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T14:08:43.720 INFO server is listening on 3000
+2018-02-01T14:38:55.032 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T14:38:55.036 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T14:38:55.036 INFO starting potree server
+2018-02-01T14:38:55.036 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T14:38:55.042 INFO server is listening on 3000
+2018-02-01T14:39:45.789 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T14:39:45.794 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T14:39:45.794 INFO starting potree server
+2018-02-01T14:39:45.794 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T14:39:45.838 INFO server is listening on 3000
+2018-02-01T17:30:00.348 INFO ======= REQUEST START =======
+2018-02-01T17:30:00.351 INFO date: 2018-02-01T16:30:00.350Z
+2018-02-01T17:30:00.351 INFO host: localhost:3000
+2018-02-01T17:30:00.351 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://5.9.65.151/mschuetz/potree/resources/pointclouds/archpro/heidentor/cloud.js
+2018-02-01T17:30:00.351 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T17:30:00.352 INFO start_extract_region_worker
+2018-02-01T17:30:00.355 INFO realPointcloudPaths C:/dev/workspaces/potree/developmschuetz/potree/resources/pointclouds/archpro/heidentor/cloud.js
+2018-02-01T17:30:00.429 INFO SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:497:17
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+    at C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:284:7
+    at Function.process_params (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:335:12)
+    at next (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:275:10)
+    at app.use (C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:438:3)
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+2018-02-01T17:30:00.436 INFO JSON: 
+2018-02-01T17:46:54.718 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:46:54.721 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:46:54.722 INFO starting potree server
+2018-02-01T17:46:54.722 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:46:54.727 INFO server is listening on 3000
+2018-02-01T17:47:07.605 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:47:07.609 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:47:07.610 INFO starting potree server
+2018-02-01T17:47:07.610 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:47:07.615 INFO server is listening on 3000
+2018-02-01T17:48:52.662 INFO ======= REQUEST START =======
+2018-02-01T17:48:52.662 INFO date: 2018-02-01T16:48:52.662Z
+2018-02-01T17:48:52.662 INFO host: localhost:3000
+2018-02-01T17:48:52.663 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://localhost:1234/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:48:52.663 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T17:48:52.664 INFO start_extract_region_worker
+2018-02-01T17:48:52.666 INFO realPointcloudPaths C:/dev/workspaces/potree/examplesexamples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:48:52.727 INFO SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:497:17
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+    at C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:284:7
+    at Function.process_params (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:335:12)
+    at next (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:275:10)
+    at app.use (C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:438:3)
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+2018-02-01T17:48:52.732 INFO JSON: 
+2018-02-01T17:49:40.411 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:49:40.414 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:49:40.414 INFO starting potree server
+2018-02-01T17:49:40.415 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:49:40.420 INFO server is listening on 3000
+2018-02-01T17:49:51.995 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:49:51.999 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:49:51.999 INFO starting potree server
+2018-02-01T17:49:51.999 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:49:52.004 INFO server is listening on 3000
+2018-02-01T17:50:05.739 INFO ======= REQUEST START =======
+2018-02-01T17:50:05.739 INFO date: 2018-02-01T16:50:05.739Z
+2018-02-01T17:50:05.740 INFO host: localhost:3000
+2018-02-01T17:50:05.740 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://localhost:1234/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:50:05.740 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T17:50:05.741 INFO start_extract_region_worker
+2018-02-01T17:50:05.743 INFO realPointcloudPaths C:/dev/workspaces/potreeexamples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:50:05.788 INFO SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:497:17
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+    at C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:284:7
+    at Function.process_params (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:335:12)
+    at next (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:275:10)
+    at app.use (C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:438:3)
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+2018-02-01T17:50:05.793 INFO JSON: 
+2018-02-01T17:50:35.626 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:50:35.630 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:50:35.631 INFO starting potree server
+2018-02-01T17:50:35.631 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:50:35.636 INFO server is listening on 3000
+2018-02-01T17:50:44.574 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:50:44.578 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:50:44.578 INFO starting potree server
+2018-02-01T17:50:44.579 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:50:44.583 INFO server is listening on 3000
+2018-02-01T17:51:14.011 INFO ======= REQUEST START =======
+2018-02-01T17:51:14.012 INFO date: 2018-02-01T16:51:14.012Z
+2018-02-01T17:51:14.012 INFO host: localhost:3000
+2018-02-01T17:51:14.012 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://localhost:1234/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:51:14.012 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T17:51:14.013 INFO start_extract_region_worker
+2018-02-01T17:51:14.015 INFO realPointcloudPaths C:/dev/workspaces/potree/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:51:14.062 INFO SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:497:17
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+    at C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:284:7
+    at Function.process_params (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:335:12)
+    at next (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:275:10)
+    at app.use (C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js:438:3)
+    at Layer.handle [as handle_request] (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\dev\workspaces\PotreeServer\master\node_modules\express\lib\router\index.js:317:13)
+2018-02-01T17:51:14.067 INFO JSON: 
+2018-02-01T17:52:08.634 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T17:52:08.639 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T17:52:08.639 INFO starting potree server
+2018-02-01T17:52:08.639 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T17:52:08.645 INFO server is listening on 3000
+2018-02-01T17:52:10.041 INFO ======= REQUEST START =======
+2018-02-01T17:52:10.042 INFO date: 2018-02-01T16:52:10.042Z
+2018-02-01T17:52:10.042 INFO host: localhost:3000
+2018-02-01T17:52:10.043 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://localhost:1234/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:52:10.043 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T17:52:10.043 INFO start_extract_region_worker
+2018-02-01T17:52:10.045 INFO realPointcloudPaths C:/dev/workspaces/potree/develop/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:52:10.172 INFO realPointcloudPaths C:/dev/workspaces/potree/develop/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T17:52:14.700 INFO archiving results to D:/dev/temp/bfdfe1a1-5a22-4599-966d-0f9d6fd73cd3/2018.02.01_17.52.10_mschuetz.zip
+2018-02-01T17:52:15.630 INFO archiving finished
+2018-02-01T17:53:00.032 INFO ======= REQUEST START =======
+2018-02-01T17:53:00.033 INFO date: 2018-02-01T16:53:00.033Z
+2018-02-01T17:53:00.034 INFO host: localhost:3000
+2018-02-01T17:53:00.034 INFO request: /authentication
+2018-02-01T17:53:00.034 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T18:04:29.641 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T18:04:29.645 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T18:04:29.645 INFO starting potree server
+2018-02-01T18:04:29.645 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T18:04:29.650 INFO server is listening on 3000
+2018-02-01T18:06:30.236 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T18:06:30.236 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T18:06:30.236 INFO starting potree server
+2018-02-01T18:06:30.236 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T18:06:30.236 INFO server is listening on 3000
+2018-02-01T18:06:49.505 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T18:06:49.505 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T18:06:49.505 INFO starting potree server
+2018-02-01T18:06:49.505 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T18:06:49.505 INFO server is listening on 3000
+2018-02-01T18:07:15.054 INFO ======= REQUEST START =======
+2018-02-01T18:07:15.055 INFO date: 2018-02-01T17:07:15.055Z
+2018-02-01T18:07:15.055 INFO host: localhost:3000
+2018-02-01T18:07:15.055 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://localhost:1234/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T18:07:15.055 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T18:07:15.056 INFO start_extract_region_worker
+2018-02-01T18:07:15.058 INFO realPointcloudPaths C:/dev/workspaces/potree/develop/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T18:07:15.106 INFO realPointcloudPaths C:/dev/workspaces/potree/develop/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T18:07:17.569 INFO archiving results to D:/dev/temp/00513ea6-de33-4c2f-8d8f-1b924019135e/2018.02.01_18.07.15_mschuetz.zip
+2018-02-01T18:07:18.712 INFO ======= REQUEST START =======
+2018-02-01T18:07:18.712 INFO date: 2018-02-01T17:07:18.712Z
+2018-02-01T18:07:18.713 INFO host: localhost:3000
+2018-02-01T18:07:18.713 INFO request: /
+2018-02-01T18:07:18.713 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T18:07:18.818 INFO archiving finished
+2018-02-01T18:07:23.790 INFO ======= REQUEST START =======
+2018-02-01T18:07:23.790 INFO date: 2018-02-01T17:07:23.790Z
+2018-02-01T18:07:23.790 INFO host: localhost:3000
+2018-02-01T18:07:23.790 INFO request: /authentication
+2018-02-01T18:07:23.790 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:35:00.540 INFO ======= REQUEST START =======
+2018-02-01T19:35:00.540 INFO date: 2018-02-01T18:35:00.540Z
+2018-02-01T19:35:00.540 INFO host: localhost:3000
+2018-02-01T19:35:00.540 INFO request: /authentication
+2018-02-01T19:35:00.540 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:35:01.165 INFO ======= REQUEST START =======
+2018-02-01T19:35:01.166 INFO date: 2018-02-01T18:35:01.166Z
+2018-02-01T19:35:01.166 INFO host: localhost:3000
+2018-02-01T19:35:01.166 INFO request: /authentication
+2018-02-01T19:35:01.166 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:36:01.885 INFO filename C:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T19:36:01.889 INFO dirname C:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T19:36:01.890 INFO starting potree server
+2018-02-01T19:36:01.890 INFO Using settings from: 'C:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T19:36:01.895 INFO server is listening on 3000
+2018-02-01T19:36:53.312 INFO ======= REQUEST START =======
+2018-02-01T19:36:53.313 INFO date: 2018-02-01T18:36:53.313Z
+2018-02-01T19:36:53.313 INFO host: localhost:3000
+2018-02-01T19:36:53.315 INFO request: /start_extract_region_worker?minLOD=0&maxLOD=100&box=7.465,0,0,0,0,5.503,0,0,0,0,1.642,0,-1.936,-1.888,4.478,1&pointcloud[]=http://localhost:1234/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T19:36:53.315 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:36:53.315 INFO start_extract_region_worker
+2018-02-01T19:36:53.317 INFO realPointcloudPaths C:/dev/workspaces/potree/develop/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T19:36:53.392 INFO realPointcloudPaths C:/dev/workspaces/potree/develop/examples/heidentor.html/../../pointclouds/D/archpro/heidentor/cloud.js
+2018-02-01T19:36:55.922 INFO archiving results to D:/dev/temp/e7638d34-8a83-4de1-b3f2-e8e02fedccb2/2018.02.01_19.36.53_mschuetz.zip
+2018-02-01T19:36:56.858 INFO archiving finished
+2018-02-01T19:37:03.540 INFO ======= REQUEST START =======
+2018-02-01T19:37:03.543 INFO date: 2018-02-01T18:37:03.543Z
+2018-02-01T19:37:03.543 INFO host: localhost:3000
+2018-02-01T19:37:03.544 INFO request: /authentication
+2018-02-01T19:37:03.544 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:37:17.815 INFO ======= REQUEST START =======
+2018-02-01T19:37:17.817 INFO date: 2018-02-01T18:37:17.817Z
+2018-02-01T19:37:17.817 INFO host: localhost:3000
+2018-02-01T19:37:17.819 INFO request: /authentication
+2018-02-01T19:37:17.820 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:39:35.161 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T19:39:35.165 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T19:39:35.165 INFO starting potree server
+2018-02-01T19:39:35.166 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T19:39:37.248 INFO server is listening on 3000
+2018-02-01T19:39:40.051 INFO ======= REQUEST START =======
+2018-02-01T19:39:40.051 INFO date: 2018-02-01T18:39:40.051Z
+2018-02-01T19:39:40.051 INFO host: localhost:3000
+2018-02-01T19:39:40.052 INFO request: /authentication
+2018-02-01T19:39:40.052 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:47:07.371 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T19:47:07.371 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T19:47:07.371 INFO starting potree server
+2018-02-01T19:47:07.371 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T19:47:07.371 INFO server is listening on 3000
+2018-02-01T19:47:11.674 INFO ======= REQUEST START =======
+2018-02-01T19:47:11.674 INFO date: 2018-02-01T18:47:11.674Z
+2018-02-01T19:47:11.674 INFO host: localhost:3000
+2018-02-01T19:47:11.674 INFO request: /authentication
+2018-02-01T19:47:11.675 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:47:38.648 INFO ======= REQUEST START =======
+2018-02-01T19:47:45.738 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T19:47:45.738 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T19:47:45.738 INFO starting potree server
+2018-02-01T19:47:45.738 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T19:47:45.754 INFO server is listening on 3000
+2018-02-01T19:47:45.964 INFO ======= REQUEST START =======
+2018-02-01T19:47:45.965 INFO date: 2018-02-01T18:47:45.965Z
+2018-02-01T19:47:45.965 INFO host: localhost:3000
+2018-02-01T19:47:45.965 INFO request: /authentication
+2018-02-01T19:47:45.965 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:47:45.965 INFO test
+2018-02-01T19:48:59.380 INFO filename c:\dev\workspaces\PotreeServer\master\build\potree_server\potree_server.js
+2018-02-01T19:48:59.383 INFO dirname c:\dev\workspaces\PotreeServer\master\build\potree_server
+2018-02-01T19:48:59.384 INFO starting potree server
+2018-02-01T19:48:59.384 INFO Using settings from: 'c:\dev\workspaces\PotreeServer\master\build\potree_server/settings.json'
+2018-02-01T19:48:59.391 INFO server is listening on 3000
+2018-02-01T19:48:59.930 INFO ======= REQUEST START =======
+2018-02-01T19:48:59.930 INFO date: 2018-02-01T18:48:59.930Z
+2018-02-01T19:48:59.931 INFO host: localhost:3000
+2018-02-01T19:48:59.931 INFO request: /authentication
+2018-02-01T19:48:59.931 INFO user: ELCOMANDANTE\mschuetz
+2018-02-01T19:49:11.745 INFO ======= REQUEST START =======

@@ -446,7 +446,6 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 			return;
 		}
 		
-		
 		let user = req.connection.user;
 		let username = user.substring(user.lastIndexOf("\\") + 1);
 		

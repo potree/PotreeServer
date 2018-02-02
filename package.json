@@ -13,7 +13,7 @@
 		"gulp-size": "^2.1.0",
 		"gulp-uglify": "*",
 		"log4js": "^2.3.1",
-		"node-sspi": "^0.1.15",
+		"node-sspi": "^0.2.2",
 		"uuid": "^3.1.0"
 	},
 	"author": {},
