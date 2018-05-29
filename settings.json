@@ -5,7 +5,7 @@
 	"extractRegionExe": "bin/PotreeExtractRegion.exe",
 
 	"maxActiveWorkers": 1,
-	"authenticate": true,
+	"authenticate": false,
 	
 	"#":"Only requests with an estimate below this threshold will be processed",
 	"maxPointsProcessedThreshold": 10000000,

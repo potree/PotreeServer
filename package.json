@@ -4,17 +4,9 @@
 	"version": "0.0.1",
 	"description": "Server Backend for Potree",
 	"dependencies": {
-		"archiver": "^1.3.0",
 		"cors": "^2.8.4",
-		"express": "^4.15.3",
-		"gulp": "^3.9.1",
-		"gulp-concat": "^2.6.1",
-		"gulp-rename": "*",
-		"gulp-size": "^2.1.0",
-		"gulp-uglify": "*",
-		"log4js": "^2.3.1",
-		"node-sspi": "^0.2.2",
-		"uuid": "^3.1.0"
+		"express": "^4.16.3",
+		"gulp": "^3.9.1"
 	},
 	"author": {},
 	"license": ""
