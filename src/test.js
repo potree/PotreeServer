@@ -9,8 +9,9 @@ const Frustum = require("./Frustum.js").Frustum;
 
 
 //let lionPath = "./pointclouds/lion_takanawa/cloud.js";
-let lionPath = "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js";
+//let lionPath = "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js";
 //let lionPath = "D:/dev/pointclouds/lion_takanawa/cloud.js";
+let cloudPath = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
 
 let readFile = function(file){
 	return new Promise( (resolve, reject) => {
@@ -124,6 +125,16 @@ class Node{
 
 }
 
+function getHierarchyPath(name, hierarchyStepSize){
+	let path = "r/";
+	let indices = name.substr(1);
+	let numParts = Math.floor(indices.length / hierarchyStepSize);
+	for (let i = 0; i < numParts; i++) {
+		path += indices.substr(i * hierarchyStepSize, hierarchyStepSize) + '/';
+	}
+	path = path.slice(0, -1);
+	return path;
+}
 
 function parseHierarchy(hrcData){
 	let root = new Node();
@@ -214,7 +225,6 @@ async function traversePointcloud(path){
 	let visibleNodes = [root];
 
 	{
-		let invisibleNodes = [];
 		root.box = boundingBox.clone();
 		let stack = [root];
 
@@ -222,7 +232,7 @@ async function traversePointcloud(path){
 			let node = stack.pop();
 
 			for(let child of node.children){
-				if(child){
+				if(child && child.level() < cloudjs.hierarchyStepSize){
 
 					child.box = createChildAABB(node.box, child.index);
 
@@ -243,6 +253,10 @@ async function traversePointcloud(path){
 	let promises = [];
 
 	let totalByteSize = 0;
+	let inside = 0;
+	let outside = 0;
+	let lines = [];
+	let bytesPerPoint = 16;
 
 	for(let node of visibleNodes){
 
@@ -254,19 +268,40 @@ async function traversePointcloud(path){
 
 			let buffer = result;
 
-			let numPoints = buffer.length / 18;
-			let sum = 0;
+			let numPoints = buffer.length / bytesPerPoint;
+			//let sum = [0, 0, 0];
 
 			//console.log("numPoints", numPoints);
 
-			for(let i = 0; i < numPoints; i++){
-				let ux = buffer.readUInt32BE(18 * i + 0);
-				let uy = buffer.readUInt32BE(18 * i + 4);
-				let uz = buffer.readUInt32BE(18 * i + 8);
-				sum += ux;
-			}
+			let vec = new Vector3();
 
-			let ax = sum / numPoints;
+			for(let i = 0; i < numPoints; i++){
+				let ux = buffer.readUInt32LE(bytesPerPoint * i + 0);
+				let uy = buffer.readUInt32LE(bytesPerPoint * i + 4);
+				let uz = buffer.readUInt32LE(bytesPerPoint * i + 8);
+
+				let x = ux * cloudjs.scale + node.box.min.x;
+				let y = uy * cloudjs.scale + node.box.min.y;
+				let z = uz * cloudjs.scale + node.box.min.z;
+
+				let r = buffer.readUInt8(bytesPerPoint * i + 12);
+				let g = buffer.readUInt8(bytesPerPoint * i + 13);
+				let b = buffer.readUInt8(bytesPerPoint * i + 14);
+
+				vec.x = x;
+				vec.y = y;
+				vec.z = z;
+
+				let isInside = clipRegion.containsPoint(vec);
+				if(isInside){
+					inside++;
+
+					lines.push(`${x} ${y} ${z} ${r} ${g} ${b}`);
+				}else{
+					outside++;
+				}
+
+			}
 
 			totalByteSize += buffer.length;
 
@@ -275,7 +310,19 @@ async function traversePointcloud(path){
 
 	await Promise.all(promises);
 
+	let content = lines.join("\n");
+	fs.writeFile("./testcloud.txt", content, function(err) {
+		if(err) {
+			return console.log(err);
+		}
+
+		console.log("The file was saved!");
+	}); 
+
 	console.log(totalByteSize);
+
+	console.log(`inside: ${inside}`);
+	console.log(`outside: ${outside}`);
 
 
 	let end = now();
@@ -284,4 +331,4 @@ async function traversePointcloud(path){
 
 }
 
-traversePointcloud(lionPath);
+traversePointcloud(cloudPath);

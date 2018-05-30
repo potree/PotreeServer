@@ -13,7 +13,8 @@ class Plane{
 	}
 
 	distanceToPoint(point){
-		return this.normal.dot(point) + this.distance;
+		let distance = this.normal.dot(point) + this.distance;
+		return distance;
 	}
 
 }

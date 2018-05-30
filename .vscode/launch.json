@@ -7,7 +7,7 @@
 			"request": "launch",
 			"name": "Launch Program",
 			"restart": true,
-			"program": "${workspaceFolder}/build/potree_server/potree_server.js"
+			"program": "${workspaceFolder}/src/test.js"
 		}
 	]
 }

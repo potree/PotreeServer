@@ -39,6 +39,19 @@ class Frustum{
 		return true;
 	}
 
+	containsPoint(point){
+
+		for(let plane of this.planes){
+			let distance = plane.distanceToPoint(point);
+			if(distance < 0){
+				return false;
+			}
+		}
+
+		return true;
+
+	}
+
 }
 
 module.exports.Frustum = Frustum;
