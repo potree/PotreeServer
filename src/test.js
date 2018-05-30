@@ -9,9 +9,36 @@ const Frustum = require("./Frustum.js").Frustum;
 
 
 //let lionPath = "./pointclouds/lion_takanawa/cloud.js";
-//let lionPath = "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js";
 //let lionPath = "D:/dev/pointclouds/lion_takanawa/cloud.js";
+
+
+
+
+//let cloudPath = "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js";
+//let planes = [
+//	new Plane(new Vector3(-0.4482079723225482, -0.5119879644759681, -0.7327877849543242), 7.635331998803329),
+//	new Plane(new Vector3(0.4482079723225482, 0.5119879644759681, 0.7327877849543242), -1.0383319988033284),
+//	new Plane(new Vector3(0.6307569794996448, -0.7620063278215479, 0.1466014637457780), -2.251446493622594),
+//	new Plane(new Vector3(-0.6307569794996448, 0.7620063278215479, -0.1466014637457780), 4.483446493622594),
+//	new Plane(new Vector3(0.6334471140979291, 0.3965030650470118, -0.6644772931028794), 4.66099028959601),
+//	new Plane(new Vector3(-0.6334471140979291, -0.3965030650470118, 0.6644772931028794), -3.234990289596011),
+//];
+//let inputPointByteSize = 18;
+
 let cloudPath = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
+let planes = [
+	new Plane(new Vector3(-0.0021499593298130, -0.9999976888347694, 0.0000000000000000), 12.755221474531359),
+	new Plane(new Vector3(0.0021499593298130, 0.9999976888347694, 0.0000000000000000), 6.227651358182918),
+	new Plane(new Vector3(0.9999976888347694, -0.0021499593298130, 0.0000000000000000), 5.49108018005949),
+	new Plane(new Vector3(-0.9999976888347694, 0.0021499593298130, 0.0000000000000000), -2.2906946584275993),
+	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, -1.0000000000000000), 12.696757412117096),
+	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, 1.0000000000000000), 1.052287545266731),
+];
+let inputPointByteSize = 16;
+
+let clipRegion = new Frustum(planes);
+
+
 
 let readFile = function(file){
 	return new Promise( (resolve, reject) => {
@@ -32,65 +59,6 @@ function now(){
 
 	return seconds;
 }
-
-//fs.readFile(file, function (err, data) {
-//	if(err){
-//		throw err;
-//	}
-//
-//	let jsonContent = JSON.parse(data.toString());
-//
-//	console.log(jsonContent);	
-//});
-
-//let done = false;
-//let count = 0;
-
-//function loop(){
-//	if(!done){
-//		setTimeout(loop, 1);
-//	}
-//
-//	console.log(count);
-//}
-//
-//setTimeout(loop, 0);
-
-
-//async function parseJS(){
-//
-//	console.log("parseJS");
-//
-//	let data = await readFile(file);
-//	//console.log("file has been read");
-//	let cloudjs = JSON.parse(data.toString());
-//
-//
-//
-//	
-//	console.log(cloudjs);
-//
-//	//done = true;
-//	//count++;
-//}
-//parseJS();
-
-
-//getHierarchyPath(){
-//	let path = 'r/';
-//
-//	let hierarchyStepSize = this.pcoGeometry.hierarchyStepSize;
-//	let indices = this.name.substr(1);
-//
-//	let numParts = Math.floor(indices.length / hierarchyStepSize);
-//	for (let i = 0; i < numParts; i++) {
-//		path += indices.substr(i * hierarchyStepSize, hierarchyStepSize) + '/';
-//	}
-//
-//	path = path.slice(0, -1);
-//
-//	return path;
-//}
 
 
 class Node{
@@ -136,9 +104,9 @@ function getHierarchyPath(name, hierarchyStepSize){
 	return path;
 }
 
-function parseHierarchy(hrcData){
+function parseHierarchy(hrcData, rootName){
 	let root = new Node();
-	root.name = "r";
+	root.name = rootName;
 
 	let nodes = [root];
 
@@ -192,23 +160,14 @@ function createChildAABB(aabb, index){
 	return new Box3(min, max);
 }
 
-// for lion.html
-let planes = [
-	new Plane(new Vector3(-0.4482079723225482, -0.5119879644759681, -0.7327877849543242), 7.635331998803329),
-	new Plane(new Vector3(0.4482079723225482, 0.5119879644759681, 0.7327877849543242), -1.0383319988033284),
-	new Plane(new Vector3(0.6307569794996448, -0.7620063278215479, 0.1466014637457780), -2.251446493622594),
-	new Plane(new Vector3(-0.6307569794996448, 0.7620063278215479, -0.1466014637457780), 4.483446493622594),
-	new Plane(new Vector3(0.6334471140979291, 0.3965030650470118, -0.6644772931028794), 4.66099028959601),
-	new Plane(new Vector3(-0.6334471140979291, -0.3965030650470118, 0.6644772931028794), -3.234990289596011),
-];
 
-let clipRegion = new Frustum(planes);
 
 async function traversePointcloud(path){
 
 	let start = now();
 
 	let data = await readFile(path);
+
 	let cloudjs = JSON.parse(data.toString());
 
 	let boundingBox = new Box3(
@@ -220,7 +179,7 @@ async function traversePointcloud(path){
 	let hrcData = await readFile(hrcRoot);
 	hrcData = new Uint8Array(hrcData);
 	
-	let root = parseHierarchy(hrcData);
+	let root = parseHierarchy(hrcData, "r");
 
 	let visibleNodes = [root];
 
@@ -229,18 +188,38 @@ async function traversePointcloud(path){
 		let stack = [root];
 
 		while(stack.length > 0){
-			let node = stack.pop();
+			// if the stack.shift() way of breadth-first traversal becomes a bottleneck,
+			// try https://en.wikipedia.org/wiki/Iterative_deepening_depth-first_search
+			let node = stack.shift(); 
+
+			//console.log(node.name);
 
 			for(let child of node.children){
-				if(child && child.level() < cloudjs.hierarchyStepSize){
+				if(child){
 
 					child.box = createChildAABB(node.box, child.index);
 
 					let intersects = clipRegion.intersectsBox(child.box);
+					let atHierarchyStep = (child.level() % cloudjs.hierarchyStepSize) === 0;
 
-					if(intersects){
+					if(intersects && !atHierarchyStep){
 						visibleNodes.push(child);
 						stack.push(child);
+					}else if(intersects && atHierarchyStep){
+						visibleNodes.push(child);
+
+						let hierarchyPath = getHierarchyPath(child.name, cloudjs.hierarchyStepSize);
+						let hrcPath = `${path}/../data/${hierarchyPath}/${child.name}.hrc`;
+
+						let hrcData = await readFile(hrcPath);
+						hrcData = new Uint8Array(hrcData);
+
+						let croot = parseHierarchy(hrcData, child.name);
+						croot.box = child.box;
+						croot.index = child.index;
+
+						//child.children = croot.children;
+						stack.push(croot);
 					}
 
 				}
@@ -250,17 +229,112 @@ async function traversePointcloud(path){
 		console.log(`visible nodes: ${visibleNodes.length}`);
 	}
 
+	{
+		let message = visibleNodes.map(n => n.name).join("\n");
+		var fs = require('fs');
+		fs.writeFile("log.txt", message, function(err) {
+			if(err) {
+				return console.log(err);
+			}
+
+			console.log("The file was saved!");
+		});
+	}
+
 	let promises = [];
 
 	let totalByteSize = 0;
 	let inside = 0;
 	let outside = 0;
 	let lines = [];
-	let bytesPerPoint = 16;
+	//let bytesPerPoint = 18;
+	let bytesPerPoint = inputPointByteSize;
+	let writeStream = fs.createWriteStream('teststream.txt');
+	let wstream = fs.createWriteStream('test.las');
+
+	{
+		let buffer = Buffer.from(new Uint8Array(227));
+
+		let fileSignature = "LASF";
+		buffer[0] = fileSignature.charCodeAt(0);
+		buffer[1] = fileSignature.charCodeAt(1);
+		buffer[2] = fileSignature.charCodeAt(2);
+		buffer[3] = fileSignature.charCodeAt(3);
+
+		// buffer[4-5] file source id
+		// buffer[6-7] global encoding
+		// buffer[8-11] project id guid data 1
+		// buffer[8-11] project id guid data 1
+		// buffer[12-13] project id guid data 1
+		// buffer[14-15] project id guid data 1
+		// buffer[16-23] project id guid data 1
+
+		// version major
+		buffer[24] = 1;
+
+		// version minor
+		buffer[25] = 2;
+
+		//buffer[26-57] system identifier
+		//buffer[58-89] generating software
+		//buffer[90-61] creation day of year
+		//buffer[92-93] creation year
+		
+		// header size
+		buffer.writeUInt16LE(227, 94);
+
+		// offset to point data
+		buffer.writeUInt32LE(227, 96);
+
+		// num VLRs
+		buffer.writeUInt32LE(0, 100);
+
+		// point data format
+		buffer[104] = 2;
+
+		// point data record length
+		buffer.writeUInt16LE(26, 105);
+		
+		// num points
+		//buffer.writeUInt32LE(37810, 107);
+		buffer.writeUInt32LE(12574343, 107);
+
+		// number of points by return
+		//buffer.writeUInt32LE(37810, 111);
+		buffer.writeUInt32LE(12574343, 111);
+		buffer.writeUInt32LE(0, 115);
+		buffer.writeUInt32LE(0, 119);
+		buffer.writeUInt32LE(0, 123);
+		buffer.writeUInt32LE(0, 127);
+
+		// scale factors
+		buffer.writeDoubleLE(cloudjs.scale, 131);
+		buffer.writeDoubleLE(cloudjs.scale, 139);
+		buffer.writeDoubleLE(cloudjs.scale, 147);
+
+		// offsets
+		buffer.writeDoubleLE(0, 155);
+		buffer.writeDoubleLE(0, 163);
+		buffer.writeDoubleLE(0, 171);
+
+		// bounding box [max x, min x, y, y, z, z]
+		buffer.writeDoubleLE(boundingBox.max.x, 179);
+		buffer.writeDoubleLE(boundingBox.min.x, 187);
+		buffer.writeDoubleLE(boundingBox.max.y, 195);
+		buffer.writeDoubleLE(boundingBox.min.y, 203);
+		buffer.writeDoubleLE(boundingBox.max.z, 211);
+		buffer.writeDoubleLE(boundingBox.min.z, 219);
+
+		wstream.write(buffer);
+
+
+		//let n = 12574343;
+	}
 
 	for(let node of visibleNodes){
 
-		let nodePath = `${path}/../data/r/${node.name}.bin`;
+		let hierarchyPath = getHierarchyPath(node.name, cloudjs.hierarchyStepSize);
+		let nodePath = `${path}/../data/${hierarchyPath}/${node.name}.bin`;
 		let promise = readFile(nodePath);
 		promises.push(promise);
 
@@ -275,7 +349,13 @@ async function traversePointcloud(path){
 
 			let vec = new Vector3();
 
+			let lasRecordLength = 26;
+			let outBuffer = Buffer.from(new Uint8Array(lasRecordLength * numPoints));
+
+			let insideThis = 0;
 			for(let i = 0; i < numPoints; i++){
+				//let outBuffer = Buffer.from(new Uint8Array(lasRecordLength));
+
 				let ux = buffer.readUInt32LE(bytesPerPoint * i + 0);
 				let uy = buffer.readUInt32LE(bytesPerPoint * i + 4);
 				let uz = buffer.readUInt32LE(bytesPerPoint * i + 8);
@@ -294,14 +374,35 @@ async function traversePointcloud(path){
 
 				let isInside = clipRegion.containsPoint(vec);
 				if(isInside){
-					inside++;
 
-					lines.push(`${x} ${y} ${z} ${r} ${g} ${b}`);
+					//lines.push(`${x} ${y} ${z} ${r} ${g} ${b}`);
+					//let line = `${x} ${y} ${z} ${r} ${g} ${b}\n`;
+					//writeStream.write(line);
+
+					let ux = parseInt((x - boundingBox.min.x) / cloudjs.scale);
+					let uy = parseInt((y - boundingBox.min.y) / cloudjs.scale);
+					let uz = parseInt((z - boundingBox.min.z) / cloudjs.scale);
+
+					outBuffer.writeInt32LE(ux, i * lasRecordLength + 0);
+					outBuffer.writeInt32LE(uy, i * lasRecordLength + 4);
+					outBuffer.writeInt32LE(uz, i * lasRecordLength + 8);
+
+					outBuffer.writeInt16LE(r, i * lasRecordLength + 20);
+					outBuffer.writeInt16LE(g, i * lasRecordLength + 22);
+					outBuffer.writeInt16LE(b, i * lasRecordLength + 24);
+
+					//wstream.write(outBuffer);
+					inside++;
+					insideThis++;
 				}else{
 					outside++;
 				}
 
 			}
+
+			outBuffer = outBuffer.subarray(0, insideThis * lasRecordLength);
+
+			wstream.write(outBuffer);
 
 			totalByteSize += buffer.length;
 
@@ -310,14 +411,30 @@ async function traversePointcloud(path){
 
 	await Promise.all(promises);
 
-	let content = lines.join("\n");
-	fs.writeFile("./testcloud.txt", content, function(err) {
-		if(err) {
-			return console.log(err);
-		}
+	writeStream.on('finish', () => {  
+		console.log('wrote all data to file');
+	});
 
-		console.log("The file was saved!");
-	}); 
+	wstream.on('finish', () => {
+		console.log('wrote test.las');
+
+		let end = now();
+		let duration = end - start;
+		console.log(`duration: ${duration}`);
+	});
+
+
+	writeStream.end();
+	wstream.end();
+
+	//let content = lines.join("\n");
+	//fs.writeFile("./testcloud.txt", content, function(err) {
+	//	if(err) {
+	//		return console.log(err);
+	//	}
+
+	//	console.log("The file was saved!");
+	//}); 
 
 	console.log(totalByteSize);
 
