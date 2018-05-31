@@ -35,6 +35,10 @@ class Vector3{
 		return new Vector3(this.x, this.y, this.z);
 	}
 
+	toArray(){
+		return [this.x, this.y, this.z];
+	}
+
 };
 
 module.exports.Vector3 = Vector3;

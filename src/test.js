@@ -6,11 +6,7 @@ const Vector3 = require("./Vector3.js").Vector3;
 const Box3 = require("./Box3.js").Box3;
 const Plane = require("./Plane.js").Plane;
 const Frustum = require("./Frustum.js").Frustum;
-
-
-//let lionPath = "./pointclouds/lion_takanawa/cloud.js";
-//let lionPath = "D:/dev/pointclouds/lion_takanawa/cloud.js";
-
+const LASHeader = require("./LASHeader.js").LASHeader;
 
 
 
@@ -49,6 +45,16 @@ let readFile = function(file){
 				resolve(data);
 			}
 		});
+	});
+};
+
+let endStream = function(stream){
+	return new Promise( (resolve, reject) => {
+		stream.on('finish', () => {
+			resolve();
+		});
+
+		stream.end();
 	});
 };
 
@@ -160,20 +166,7 @@ function createChildAABB(aabb, index){
 	return new Box3(min, max);
 }
 
-
-
-async function traversePointcloud(path){
-
-	let start = now();
-
-	let data = await readFile(path);
-
-	let cloudjs = JSON.parse(data.toString());
-
-	let boundingBox = new Box3(
-		new Vector3(cloudjs.boundingBox.lx, cloudjs.boundingBox.ly, cloudjs.boundingBox.lz),
-		new Vector3(cloudjs.boundingBox.ux, cloudjs.boundingBox.uy, cloudjs.boundingBox.uz)
-	);
+async function findVisibleNodes(path, cloudjs, boundingBox){
 
 	let hrcRoot = `${path}/../data/r/r.hrc`;
 	let hrcData = await readFile(hrcRoot);
@@ -225,111 +218,53 @@ async function traversePointcloud(path){
 				}
 			}
 		}
-
-		console.log(`visible nodes: ${visibleNodes.length}`);
 	}
 
-	{
-		let message = visibleNodes.map(n => n.name).join("\n");
-		var fs = require('fs');
-		fs.writeFile("log.txt", message, function(err) {
-			if(err) {
-				return console.log(err);
-			}
+	//{
+	//	let message = visibleNodes.map(n => n.name).join("\n");
+	//	var fs = require('fs');
+	//	fs.writeFile("log.txt", message, function(err) {
+	//		if(err) {
+	//			return console.log(err);
+	//		}
+	//	});
+	//}
 
-			console.log("The file was saved!");
-		});
-	}
+	return visibleNodes;
+}
+
+async function traversePointcloud(path){
+
+	let start = now();
+
+	let data = await readFile(path);
+
+	let cloudjs = JSON.parse(data.toString());
+
+	let boundingBox = new Box3(
+		new Vector3(cloudjs.boundingBox.lx, cloudjs.boundingBox.ly, cloudjs.boundingBox.lz),
+		new Vector3(cloudjs.boundingBox.ux, cloudjs.boundingBox.uy, cloudjs.boundingBox.uz)
+	);
+
+	let visibleNodes = await findVisibleNodes(path, cloudjs, boundingBox);
 
 	let promises = [];
 
-	let totalByteSize = 0;
 	let inside = 0;
 	let outside = 0;
 	let lines = [];
-	//let bytesPerPoint = 18;
 	let bytesPerPoint = inputPointByteSize;
-	let writeStream = fs.createWriteStream('teststream.txt');
-	let wstream = fs.createWriteStream('test.las');
+	let outFile = "test.las";
+	let wstream = fs.createWriteStream(outFile);
 
-	{
-		let buffer = Buffer.from(new Uint8Array(227));
+	let lasHeader = new LASHeader();
+	lasHeader.scale = cloudjs.scale;
+	lasHeader.min = boundingBox.min.toArray();
+	lasHeader.max = boundingBox.max.toArray();
 
-		let fileSignature = "LASF";
-		buffer[0] = fileSignature.charCodeAt(0);
-		buffer[1] = fileSignature.charCodeAt(1);
-		buffer[2] = fileSignature.charCodeAt(2);
-		buffer[3] = fileSignature.charCodeAt(3);
+	wstream.write(lasHeader.toBuffer());
 
-		// buffer[4-5] file source id
-		// buffer[6-7] global encoding
-		// buffer[8-11] project id guid data 1
-		// buffer[8-11] project id guid data 1
-		// buffer[12-13] project id guid data 1
-		// buffer[14-15] project id guid data 1
-		// buffer[16-23] project id guid data 1
-
-		// version major
-		buffer[24] = 1;
-
-		// version minor
-		buffer[25] = 2;
-
-		//buffer[26-57] system identifier
-		//buffer[58-89] generating software
-		//buffer[90-61] creation day of year
-		//buffer[92-93] creation year
-		
-		// header size
-		buffer.writeUInt16LE(227, 94);
-
-		// offset to point data
-		buffer.writeUInt32LE(227, 96);
-
-		// num VLRs
-		buffer.writeUInt32LE(0, 100);
-
-		// point data format
-		buffer[104] = 2;
-
-		// point data record length
-		buffer.writeUInt16LE(26, 105);
-		
-		// num points
-		//buffer.writeUInt32LE(37810, 107);
-		buffer.writeUInt32LE(12574343, 107);
-
-		// number of points by return
-		//buffer.writeUInt32LE(37810, 111);
-		buffer.writeUInt32LE(12574343, 111);
-		buffer.writeUInt32LE(0, 115);
-		buffer.writeUInt32LE(0, 119);
-		buffer.writeUInt32LE(0, 123);
-		buffer.writeUInt32LE(0, 127);
-
-		// scale factors
-		buffer.writeDoubleLE(cloudjs.scale, 131);
-		buffer.writeDoubleLE(cloudjs.scale, 139);
-		buffer.writeDoubleLE(cloudjs.scale, 147);
-
-		// offsets
-		buffer.writeDoubleLE(0, 155);
-		buffer.writeDoubleLE(0, 163);
-		buffer.writeDoubleLE(0, 171);
-
-		// bounding box [max x, min x, y, y, z, z]
-		buffer.writeDoubleLE(boundingBox.max.x, 179);
-		buffer.writeDoubleLE(boundingBox.min.x, 187);
-		buffer.writeDoubleLE(boundingBox.max.y, 195);
-		buffer.writeDoubleLE(boundingBox.min.y, 203);
-		buffer.writeDoubleLE(boundingBox.max.z, 211);
-		buffer.writeDoubleLE(boundingBox.min.z, 219);
-
-		wstream.write(buffer);
-
-
-		//let n = 12574343;
-	}
+	let filterDuration = 0;
 
 	for(let node of visibleNodes){
 
@@ -340,58 +275,87 @@ async function traversePointcloud(path){
 
 		promise.then( (result) => {
 
+			let filterStart = now();
+
 			let buffer = result;
 
 			let numPoints = buffer.length / bytesPerPoint;
-			//let sum = [0, 0, 0];
-
-			//console.log("numPoints", numPoints);
-
 			let vec = new Vector3();
 
 			let lasRecordLength = 26;
 			let outBuffer = Buffer.from(new Uint8Array(lasRecordLength * numPoints));
 
-			let insideThis = 0;
-			for(let i = 0; i < numPoints; i++){
-				//let outBuffer = Buffer.from(new Uint8Array(lasRecordLength));
+			let tmpBuffer = new ArrayBuffer(4);
+			let tmpUint32 = new Uint32Array(tmpBuffer);
+			let tmpUint8 = new Uint8Array(tmpBuffer);
 
-				let ux = buffer.readUInt32LE(bytesPerPoint * i + 0);
-				let uy = buffer.readUInt32LE(bytesPerPoint * i + 4);
-				let uz = buffer.readUInt32LE(bytesPerPoint * i + 8);
+			let insideThis = 0;
+			let outOffset = 0;
+			let inOffset = 0;
+			for(let i = 0; i < numPoints; i++){
+
+				inOffset = bytesPerPoint * i;
+
+				let ux = buffer.readUInt32LE(inOffset + 0);
+				let uy = buffer.readUInt32LE(inOffset + 4);
+				let uz = buffer.readUInt32LE(inOffset + 8);
 
 				let x = ux * cloudjs.scale + node.box.min.x;
 				let y = uy * cloudjs.scale + node.box.min.y;
 				let z = uz * cloudjs.scale + node.box.min.z;
 
-				let r = buffer.readUInt8(bytesPerPoint * i + 12);
-				let g = buffer.readUInt8(bytesPerPoint * i + 13);
-				let b = buffer.readUInt8(bytesPerPoint * i + 14);
+				let r = buffer[inOffset + 12];
+				let g = buffer[inOffset + 13];
+				let b = buffer[inOffset + 14];
 
 				vec.x = x;
 				vec.y = y;
 				vec.z = z;
 
 				let isInside = clipRegion.containsPoint(vec);
+
 				if(isInside){
+					outOffset = i * lasRecordLength;
 
-					//lines.push(`${x} ${y} ${z} ${r} ${g} ${b}`);
-					//let line = `${x} ${y} ${z} ${r} ${g} ${b}\n`;
-					//writeStream.write(line);
+					let ux = (x - boundingBox.min.x) / cloudjs.scale;
+					let uy = (y - boundingBox.min.y) / cloudjs.scale;
+					let uz = (z - boundingBox.min.z) / cloudjs.scale;
 
-					let ux = parseInt((x - boundingBox.min.x) / cloudjs.scale);
-					let uy = parseInt((y - boundingBox.min.y) / cloudjs.scale);
-					let uz = parseInt((z - boundingBox.min.z) / cloudjs.scale);
+					// relatively slow
+					//outBuffer.writeInt32LE(ux, outOffset + 0);
+					//outBuffer.writeInt32LE(uy, outOffset + 4);
+					//outBuffer.writeInt32LE(uz, outOffset + 8);
 
-					outBuffer.writeInt32LE(ux, i * lasRecordLength + 0);
-					outBuffer.writeInt32LE(uy, i * lasRecordLength + 4);
-					outBuffer.writeInt32LE(uz, i * lasRecordLength + 8);
+					// reduces filter duration from ~1.95s to ~1.58s
+					tmpUint32[0] = ux;
+					outBuffer[outOffset + 0] = tmpUint8[0];
+					outBuffer[outOffset + 1] = tmpUint8[1];
+					outBuffer[outOffset + 2] = tmpUint8[2];
+					outBuffer[outOffset + 3] = tmpUint8[3];
 
-					outBuffer.writeInt16LE(r, i * lasRecordLength + 20);
-					outBuffer.writeInt16LE(g, i * lasRecordLength + 22);
-					outBuffer.writeInt16LE(b, i * lasRecordLength + 24);
+					tmpUint32[0] = uy;
+					outBuffer[outOffset + 4] = tmpUint8[0];
+					outBuffer[outOffset + 5] = tmpUint8[1];
+					outBuffer[outOffset + 6] = tmpUint8[2];
+					outBuffer[outOffset + 7] = tmpUint8[3];
 
-					//wstream.write(outBuffer);
+					tmpUint32[0] = uz;
+					outBuffer[outOffset + 8] = tmpUint8[0];
+					outBuffer[outOffset + 9] = tmpUint8[1];
+					outBuffer[outOffset + 10] = tmpUint8[2];
+					outBuffer[outOffset + 11] = tmpUint8[3];
+
+					
+					// relatively slow
+					//outBuffer.writeInt16LE(r, outOffset + 20);
+					//outBuffer.writeInt16LE(g, outOffset + 22);
+					//outBuffer.writeInt16LE(b, outOffset + 24);
+
+					// further reduces filter duration from ~1.58s to ~1.27s
+					outBuffer[outOffset + 20] = r;
+					outBuffer[outOffset + 22] = g;
+					outBuffer[outOffset + 24] = b;
+
 					inside++;
 					insideThis++;
 				}else{
@@ -402,50 +366,35 @@ async function traversePointcloud(path){
 
 			outBuffer = outBuffer.subarray(0, insideThis * lasRecordLength);
 
+			let filterEnd = now();
+			filterDuration += filterEnd - filterStart;
+
 			wstream.write(outBuffer);
-
-			totalByteSize += buffer.length;
-
 		});
 	}
 
 	await Promise.all(promises);
 
-	writeStream.on('finish', () => {  
-		console.log('wrote all data to file');
-	});
+	await endStream(wstream);
 
-	wstream.on('finish', () => {
-		console.log('wrote test.las');
+	// update header
+	lasHeader.numPoints = inside;
+	let headerBuffer = lasHeader.toBuffer();
+	let filehandle = await fs.promises.open(outFile, 'r+');
+	await filehandle.write(headerBuffer);
+	await filehandle.close();
 
-		let end = now();
-		let duration = end - start;
-		console.log(`duration: ${duration}`);
-	});
+	let stats = fs.statSync(outFile);
+	let mb = stats.size / (1024 * 1024)
 
-
-	writeStream.end();
-	wstream.end();
-
-	//let content = lines.join("\n");
-	//fs.writeFile("./testcloud.txt", content, function(err) {
-	//	if(err) {
-	//		return console.log(err);
-	//	}
-
-	//	console.log("The file was saved!");
-	//}); 
-
-	console.log(totalByteSize);
-
-	console.log(`inside: ${inside}`);
-	console.log(`outside: ${outside}`);
-
+	console.log(`visible nodes: ${visibleNodes.length}`);
+	console.log(`inside: ${inside.toLocaleString("en")}, outside: ${outside.toLocaleString("en")}`);
+	console.log(`wrote ${outFile} (${parseInt(mb)}MB)`);
 
 	let end = now();
 	let duration = end - start;
-	console.log(`duration: ${duration}`);
-
+	console.log(`filter duration: ${filterDuration.toFixed(3)}s`);
+	console.log(`total duration (with read/write): ${duration.toFixed(3)}s`);
 }
 
 traversePointcloud(cloudPath);
