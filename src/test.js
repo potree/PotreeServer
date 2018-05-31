@@ -35,26 +35,6 @@ let configurations = {
 	}
 };
 
-//let cloudPath = "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js";
-//let planes = [
-//	new Plane(new Vector3(-0.4482079723225482, -0.5119879644759681, -0.7327877849543242), 7.635331998803329),
-//	new Plane(new Vector3(0.4482079723225482, 0.5119879644759681, 0.7327877849543242), -1.0383319988033284),
-//	new Plane(new Vector3(0.6307569794996448, -0.7620063278215479, 0.1466014637457780), -2.251446493622594),
-//	new Plane(new Vector3(-0.6307569794996448, 0.7620063278215479, -0.1466014637457780), 4.483446493622594),
-//	new Plane(new Vector3(0.6334471140979291, 0.3965030650470118, -0.6644772931028794), 4.66099028959601),
-//	new Plane(new Vector3(-0.6334471140979291, -0.3965030650470118, 0.6644772931028794), -3.234990289596011),
-//];
-//
-//let cloudPath = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
-//let planes = [
-//	new Plane(new Vector3(-0.0021499593298130, -0.9999976888347694, 0.0000000000000000), 12.755221474531359),
-//	new Plane(new Vector3(0.0021499593298130, 0.9999976888347694, 0.0000000000000000), 6.227651358182918),
-//	new Plane(new Vector3(0.9999976888347694, -0.0021499593298130, 0.0000000000000000), 5.49108018005949),
-//	new Plane(new Vector3(-0.9999976888347694, 0.0021499593298130, 0.0000000000000000), -2.2906946584275993),
-//	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, -1.0000000000000000), 12.696757412117096),
-//	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, 1.0000000000000000), 1.052287545266731),
-//];
-
 let config = configurations.HEIDENTOR;
 let cloudPath = config.cloudPath;
 let planes = config.planes;
@@ -293,6 +273,28 @@ async function traversePointcloud(path){
 
 	let filterDuration = 0;
 
+	// adding var, let or const specifiers to these variables carries huge performance penalties
+	// like from 1.1s to 1.3s. 
+	readPos = attributes.contains(PointAttribute.POSITION_CARTESIAN);
+	readColor = attributes.contains(PointAttribute.COLOR_PACKED);
+	offsetPos = attributes.offsetOf(PointAttribute.POSITION_CARTESIAN);
+	offsetColor = attributes.offsetOf(PointAttribute.COLOR_PACKED);
+
+	//ux = 0;
+	//uy = 0;
+	//uz = 0;
+	//x = 0;
+	//y = 0;
+	//z = 0;
+	//r = 0;
+	//g = 0;
+	//b = 0;
+
+	//readPos = true;
+	//readColor = true;
+	//offsetPos = 0;
+	//offsetColor = 12;
+
 	for(let node of visibleNodes){
 
 		let hierarchyPath = getHierarchyPath(node.name, cloudjs.hierarchyStepSize);
@@ -322,30 +324,26 @@ async function traversePointcloud(path){
 			let [ux, uy, uz] = [0, 0, 0];
 			let [x, y, z] = [0, 0, 0];
 			let [r, g, b] = [0, 0, 0];
+
 			for(let i = 0; i < numPoints; i++){
 
 				inOffset = attributes.bytes * i;
 				let poffset = 0;
 
-				for(let attribute of attributes.attributes){
+				if(readPos){
+					ux = buffer.readUInt32LE(inOffset + offsetPos + 0);
+					uy = buffer.readUInt32LE(inOffset + offsetPos + 4);
+					uz = buffer.readUInt32LE(inOffset + offsetPos + 8);
 
-
-					if(attribute === PointAttribute.POSITION_CARTESIAN){
-						ux = buffer.readUInt32LE(inOffset + poffset + 0);
-						uy = buffer.readUInt32LE(inOffset + poffset + 4);
-						uz = buffer.readUInt32LE(inOffset + poffset + 8);
-
-						x = ux * cloudjs.scale + node.box.min.x;
-						y = uy * cloudjs.scale + node.box.min.y;
-						z = uz * cloudjs.scale + node.box.min.z;
+					x = ux * cloudjs.scale + node.box.min.x;
+					y = uy * cloudjs.scale + node.box.min.y;
+					z = uz * cloudjs.scale + node.box.min.z;
+				}
 						
-					}else if(attribute === PointAttribute.COLOR_PACKED){
-						r = buffer[inOffset + poffset + 0];
-						g = buffer[inOffset + poffset + 1];
-						b = buffer[inOffset + poffset + 2];
-					}
-
-					poffset += attribute.bytes;
+				if(readColor){
+					r = buffer[inOffset + offsetColor + 0];
+					g = buffer[inOffset + offsetColor + 1];
+					b = buffer[inOffset + offsetColor + 2];
 				}
 
 				vec.x = x;
@@ -357,9 +355,9 @@ async function traversePointcloud(path){
 				if(isInside){
 					outOffset = i * lasRecordLength;
 
-					//let ux = (x - boundingBox.min.x) / cloudjs.scale;
-					//let uy = (y - boundingBox.min.y) / cloudjs.scale;
-					//let uz = (z - boundingBox.min.z) / cloudjs.scale;
+					let ux = (x - boundingBox.min.x) / cloudjs.scale;
+					let uy = (y - boundingBox.min.y) / cloudjs.scale;
+					let uz = (z - boundingBox.min.z) / cloudjs.scale;
 
 					// relatively slow
 					//outBuffer.writeInt32LE(ux, outOffset + 0);

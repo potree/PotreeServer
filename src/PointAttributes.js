@@ -9,10 +9,34 @@ let PointAttribute = {
 
 class PointAttributes{
 
-	constructor(attributes){
-		this.attributes = attributes;
-		this.bytes = attributes.reduce( (sum, attribute) => (sum + attribute.bytes), 0);
+	constructor(elements){
+		this.elements = elements;
+		this.bytes = elements.reduce( (sum, attribute) => (sum + attribute.bytes), 0);
 
+	}
+
+	contains(value){
+		for(let element of this.elements){
+			if(element === value){
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	offsetOf(value){
+		let offset = 0;
+
+		for(let element of this.elements){
+			if(element === value){
+				return offset;
+			}
+
+			offset += element.bytes;
+		}
+
+		return null;
 	}
 
 }
