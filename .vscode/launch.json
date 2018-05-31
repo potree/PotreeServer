@@ -6,7 +6,7 @@
 			"type": "node",
 			"request": "launch",
 			"name": "Launch Program",
-			"restart": true,
+			"restart": false,
 			"program": "${workspaceFolder}/src/test.js"
 		}
 	]

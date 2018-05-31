@@ -7,8 +7,33 @@ const Box3 = require("./Box3.js").Box3;
 const Plane = require("./Plane.js").Plane;
 const Frustum = require("./Frustum.js").Frustum;
 const LASHeader = require("./LASHeader.js").LASHeader;
+const PointAttribute = require("./PointAttributes.js").PointAttribute;
+const PointAttributes = require("./PointAttributes.js").PointAttributes;
 
-
+let configurations = {
+	LION: {
+		cloudPath: "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js",
+		planes: [
+			new Plane(new Vector3(-0.4482079723225482, -0.5119879644759681, -0.7327877849543242), 7.635331998803329),
+			new Plane(new Vector3(0.4482079723225482, 0.5119879644759681, 0.7327877849543242), -1.0383319988033284),
+			new Plane(new Vector3(0.6307569794996448, -0.7620063278215479, 0.1466014637457780), -2.251446493622594),
+			new Plane(new Vector3(-0.6307569794996448, 0.7620063278215479, -0.1466014637457780), 4.483446493622594),
+			new Plane(new Vector3(0.6334471140979291, 0.3965030650470118, -0.6644772931028794), 4.66099028959601),
+			new Plane(new Vector3(-0.6334471140979291, -0.3965030650470118, 0.6644772931028794), -3.234990289596011),
+		]
+	},
+	HEIDENTOR: {
+		cloudPath: "D:/dev/pointclouds/archpro/heidentor/cloud.js",
+		planes: [
+			new Plane(new Vector3(-0.0021499593298130, -0.9999976888347694, 0.0000000000000000), 12.755221474531359),
+			new Plane(new Vector3(0.0021499593298130, 0.9999976888347694, 0.0000000000000000), 6.227651358182918),
+			new Plane(new Vector3(0.9999976888347694, -0.0021499593298130, 0.0000000000000000), 5.49108018005949),
+			new Plane(new Vector3(-0.9999976888347694, 0.0021499593298130, 0.0000000000000000), -2.2906946584275993),
+			new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, -1.0000000000000000), 12.696757412117096),
+			new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, 1.0000000000000000), 1.052287545266731),
+		]
+	}
+};
 
 //let cloudPath = "C:/dev/workspaces/potree/develop/pointclouds/lion_takanawa/cloud.js";
 //let planes = [
@@ -19,21 +44,22 @@ const LASHeader = require("./LASHeader.js").LASHeader;
 //	new Plane(new Vector3(0.6334471140979291, 0.3965030650470118, -0.6644772931028794), 4.66099028959601),
 //	new Plane(new Vector3(-0.6334471140979291, -0.3965030650470118, 0.6644772931028794), -3.234990289596011),
 //];
-//let inputPointByteSize = 18;
+//
+//let cloudPath = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
+//let planes = [
+//	new Plane(new Vector3(-0.0021499593298130, -0.9999976888347694, 0.0000000000000000), 12.755221474531359),
+//	new Plane(new Vector3(0.0021499593298130, 0.9999976888347694, 0.0000000000000000), 6.227651358182918),
+//	new Plane(new Vector3(0.9999976888347694, -0.0021499593298130, 0.0000000000000000), 5.49108018005949),
+//	new Plane(new Vector3(-0.9999976888347694, 0.0021499593298130, 0.0000000000000000), -2.2906946584275993),
+//	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, -1.0000000000000000), 12.696757412117096),
+//	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, 1.0000000000000000), 1.052287545266731),
+//];
 
-let cloudPath = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
-let planes = [
-	new Plane(new Vector3(-0.0021499593298130, -0.9999976888347694, 0.0000000000000000), 12.755221474531359),
-	new Plane(new Vector3(0.0021499593298130, 0.9999976888347694, 0.0000000000000000), 6.227651358182918),
-	new Plane(new Vector3(0.9999976888347694, -0.0021499593298130, 0.0000000000000000), 5.49108018005949),
-	new Plane(new Vector3(-0.9999976888347694, 0.0021499593298130, 0.0000000000000000), -2.2906946584275993),
-	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, -1.0000000000000000), 12.696757412117096),
-	new Plane(new Vector3(0.0000000000000000, 0.0000000000000000, 1.0000000000000000), 1.052287545266731),
-];
-let inputPointByteSize = 16;
+let config = configurations.HEIDENTOR;
+let cloudPath = config.cloudPath;
+let planes = config.planes;
 
 let clipRegion = new Frustum(planes);
-
 
 
 let readFile = function(file){
@@ -241,6 +267,8 @@ async function traversePointcloud(path){
 
 	let cloudjs = JSON.parse(data.toString());
 
+	let attributes = new PointAttributes(cloudjs.pointAttributes.map(name => PointAttribute[name]));
+
 	let boundingBox = new Box3(
 		new Vector3(cloudjs.boundingBox.lx, cloudjs.boundingBox.ly, cloudjs.boundingBox.lz),
 		new Vector3(cloudjs.boundingBox.ux, cloudjs.boundingBox.uy, cloudjs.boundingBox.uz)
@@ -253,7 +281,6 @@ async function traversePointcloud(path){
 	let inside = 0;
 	let outside = 0;
 	let lines = [];
-	let bytesPerPoint = inputPointByteSize;
 	let outFile = "test.las";
 	let wstream = fs.createWriteStream(outFile);
 
@@ -279,7 +306,7 @@ async function traversePointcloud(path){
 
 			let buffer = result;
 
-			let numPoints = buffer.length / bytesPerPoint;
+			let numPoints = buffer.length / attributes.bytes;
 			let vec = new Vector3();
 
 			let lasRecordLength = 26;
@@ -292,21 +319,34 @@ async function traversePointcloud(path){
 			let insideThis = 0;
 			let outOffset = 0;
 			let inOffset = 0;
+			let [ux, uy, uz] = [0, 0, 0];
+			let [x, y, z] = [0, 0, 0];
+			let [r, g, b] = [0, 0, 0];
 			for(let i = 0; i < numPoints; i++){
 
-				inOffset = bytesPerPoint * i;
+				inOffset = attributes.bytes * i;
+				let poffset = 0;
 
-				let ux = buffer.readUInt32LE(inOffset + 0);
-				let uy = buffer.readUInt32LE(inOffset + 4);
-				let uz = buffer.readUInt32LE(inOffset + 8);
+				for(let attribute of attributes.attributes){
 
-				let x = ux * cloudjs.scale + node.box.min.x;
-				let y = uy * cloudjs.scale + node.box.min.y;
-				let z = uz * cloudjs.scale + node.box.min.z;
 
-				let r = buffer[inOffset + 12];
-				let g = buffer[inOffset + 13];
-				let b = buffer[inOffset + 14];
+					if(attribute === PointAttribute.POSITION_CARTESIAN){
+						ux = buffer.readUInt32LE(inOffset + poffset + 0);
+						uy = buffer.readUInt32LE(inOffset + poffset + 4);
+						uz = buffer.readUInt32LE(inOffset + poffset + 8);
+
+						x = ux * cloudjs.scale + node.box.min.x;
+						y = uy * cloudjs.scale + node.box.min.y;
+						z = uz * cloudjs.scale + node.box.min.z;
+						
+					}else if(attribute === PointAttribute.COLOR_PACKED){
+						r = buffer[inOffset + poffset + 0];
+						g = buffer[inOffset + poffset + 1];
+						b = buffer[inOffset + poffset + 2];
+					}
+
+					poffset += attribute.bytes;
+				}
 
 				vec.x = x;
 				vec.y = y;
@@ -317,9 +357,9 @@ async function traversePointcloud(path){
 				if(isInside){
 					outOffset = i * lasRecordLength;
 
-					let ux = (x - boundingBox.min.x) / cloudjs.scale;
-					let uy = (y - boundingBox.min.y) / cloudjs.scale;
-					let uz = (z - boundingBox.min.z) / cloudjs.scale;
+					//let ux = (x - boundingBox.min.x) / cloudjs.scale;
+					//let uy = (y - boundingBox.min.y) / cloudjs.scale;
+					//let uz = (z - boundingBox.min.z) / cloudjs.scale;
 
 					// relatively slow
 					//outBuffer.writeInt32LE(ux, outOffset + 0);
