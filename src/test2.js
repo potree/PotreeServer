@@ -3,7 +3,7 @@
 
 const Vector3 = require("./Vector3.js").Vector3;
 const Plane = require("./Plane.js").Plane;
-const Frustum = require("./Frustum.js").Frustum;
+const PlaneClipRegion = require("./PlaneClipRegion.js").PlaneClipRegion;
 const RegionFilter = require("./RegionFilter.js");
 
 
@@ -88,6 +88,6 @@ let config = configurations.HEIDENTOR2;
 let cloudPath = config.cloudPath;
 let planes = config.planes;
 
-let clipRegion = new Frustum(planes);
+let clipRegion = new PlaneClipRegion(planes);
 
 RegionFilter.filter(cloudPath, clipRegion);

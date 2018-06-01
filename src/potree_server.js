@@ -12,6 +12,11 @@ const path = require('path');
 //const log4js = require('log4js');
 const os = require("os");
 
+const PlaneClipRegion = require("./PlaneClipRegion.js").PlaneClipRegion;
+const Vector3 = require("./Vector3.js").Vector3;
+const Plane = require("./Plane.js").Plane;
+const RegionFilter = require("./RegionFilter.js");
+
 let app = express();
 let server = http.createServer(app);
 
@@ -109,6 +114,44 @@ if(fs.existsSync(settingsPath)){
 		let msg = "asd";
 	
 		res.send(msg);
+	});
+
+	app.use("/clip", function (req, res, next) {
+
+		let purl = url.parse(req.url, true);
+		let query = purl.query;
+		
+		let v = (value, def) => ((value === undefined) ? def : value);
+		
+
+		try{
+			let qplanes = v(query["planes"], 0);
+			let jplanes = JSON.parse(qplanes);
+			//console.log(planes);
+
+			let planes = [];
+			for(let jplane of jplanes){
+				let plane = new Plane(new Vector3(...jplane.slice(0,3)), jplane[3]);
+				planes.push(plane);
+			}
+
+			let clipRegion = new PlaneClipRegion(planes);
+
+			let path = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
+			RegionFilter.filter(path, clipRegion);
+
+		}catch(e){
+			//TODO
+			console.error(e);
+		}
+		
+
+
+
+		let msg = "asd";
+	
+		res.send(msg);
+		res.end();
 	});
 	
 }

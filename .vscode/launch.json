@@ -1,13 +1,19 @@
 {
 	"version": "0.2.0",
 	"configurations": [
-
 		{
 			"type": "node",
 			"request": "launch",
 			"name": "Launch Program",
 			"restart": false,
-			"program": "${workspaceFolder}/src/test.js"
-		}
+			"program": "${workspaceFolder}/src/potree_server.js"
+		},
+		//{
+		//	"type": "node",
+		//	"request": "launch",
+		//	"name": "Launch Program",
+		//	"restart": false,
+		//	"program": "${workspaceFolder}/src/test.js"
+		//}
 	]
 }

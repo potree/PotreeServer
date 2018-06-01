@@ -13,7 +13,7 @@ gulp.task("server", function(){
 	}	
 	
 	//node = spawn('node', ['./src/potree_server.js'], {stdio: 'inherit'})
-	node = spawn('node', ['./src/test.js'], {stdio: 'inherit'})
+	node = spawn('node', ['./src/potree_server.js'], {stdio: 'inherit'})
 
 	node.on('close', (code) => {
 		if(code === 8){

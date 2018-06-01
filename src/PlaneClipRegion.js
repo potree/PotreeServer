@@ -6,7 +6,7 @@
 
 const Vector3 = require("./Vector3.js").Vector3;
 
-class Frustum{
+class PlaneClipRegion{
 
 	constructor(planes){
 
@@ -54,4 +54,4 @@ class Frustum{
 
 }
 
-module.exports.Frustum = Frustum;
+module.exports.PlaneClipRegion = PlaneClipRegion;
