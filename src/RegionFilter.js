@@ -322,7 +322,7 @@ async function traversePointcloud(path){
 				let isInside = clipRegion.containsPoint(vec);
 
 				if(isInside){
-					outOffset = i * lasRecordLength;
+					outOffset = insideThis * lasRecordLength;
 
 					let ux = (x - boundingBox.min.x) / cloudjs.scale;
 					let uy = (y - boundingBox.min.y) / cloudjs.scale;

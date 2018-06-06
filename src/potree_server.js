@@ -16,6 +16,7 @@ const PlaneClipRegion = require("./PlaneClipRegion.js").PlaneClipRegion;
 const Vector3 = require("./Vector3.js").Vector3;
 const Plane = require("./Plane.js").Plane;
 const RegionFilter = require("./RegionFilter.js");
+const RegionsFilter = require("./RegionsFilter.js").RegionsFilter;
 
 let app = express();
 let server = http.createServer(app);
@@ -125,20 +126,29 @@ if(fs.existsSync(settingsPath)){
 		
 
 		try{
-			let qplanes = v(query["planes"], 0);
-			let jplanes = JSON.parse(qplanes);
-			//console.log(planes);
+			let qRegions = v(query["regions"], 0);
+			let jRegions = JSON.parse(qRegions);
 
-			let planes = [];
-			for(let jplane of jplanes){
-				let plane = new Plane(new Vector3(...jplane.slice(0,3)), jplane[3]);
-				planes.push(plane);
+			let clipRegions = [];
+			for(let jregion of jRegions){
+
+				//for(let jplane of jregion){
+				//	let plane = new Plane(new Vector3(...jregion.slice(0,3)), jregion[3]);
+				//	planes.push(plane);
+				//}
+
+				let planes = jregion.map( jplane => {
+					return new Plane(new Vector3(...jplane.slice(0,3)), jplane[3]);
+				});
+
+				let clipRegion = new PlaneClipRegion(planes);
+				clipRegions.push(clipRegion);
 			}
 
-			let clipRegion = new PlaneClipRegion(planes);
-
 			let path = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
-			RegionFilter.filter(path, clipRegion);
+			//RegionFilter.filter(path, clipRegions);
+
+			RegionsFilter.filter(path, clipRegions);
 
 		}catch(e){
 			//TODO

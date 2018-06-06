@@ -84,10 +84,25 @@ let configurations = {
 	}
 };
 
-let config = configurations.HEIDENTOR2;
+let config = configurations.HEIDENTOR;
 let cloudPath = config.cloudPath;
 let planes = config.planes;
-
 let clipRegion = new PlaneClipRegion(planes);
+
+
+//let point = new Vector3(-7.087, 1.945, 2.651);
+//let normal = new Vector3(-7.045, 3.515, 6.264).sub(point).normalize();
+//let plane = new Plane(normal, 0).setFromNormalAndCoplanarPoint(normal, point);
+//clipRegion = new PlaneClipRegion([plane]);
+
+//let planes = [
+//	new Plane(new Vector3(0.8963742828310604, -0.44195590056740874, -0.03446921862695754), 3.17851321982421),
+//	new Plane(new Vector3(-0.8786815082620291, -0.4761624512764659, -0.03446921862695755), -1.3051407426067887),
+//	new Plane(new Vector3(0.010855657931040704, -0.5633248040854727, 0.8261642208380536), -4.027829182803798),
+//	new Plane(new Vector3(0.008357389890395835, -0.4336839878872092, -0.9010262774661276), 6.06217347695099),
+//	new Plane(new Vector3(-0.01921304782147159, 0.9970087919726647, 0.07486205662829278), 997.9867077253832),
+//	new Plane(new Vector3(0.019213047821436534, -0.9970087919726817, -0.07486205662807431), 2.013292278201878),
+//];
+//let clipRegion = new PlaneClipRegion(planes);
 
 RegionFilter.filter(cloudPath, clipRegion);

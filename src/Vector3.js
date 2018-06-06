@@ -17,6 +17,16 @@ class Vector3{
 		return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
 	}
 
+	distanceTo(vec){
+		let dx = vec.x - this.x;
+		let dy = vec.y - this.y;
+		let dz = vec.z - this.z;
+
+		let distance = Math.sqrt(dx ** 2 + dy ** 2 + dz ** 2);
+
+		return distance;
+	}
+
 	dot(v){
 		return this.x * v.x + this.y * v.y + this.z * v.z;
 	}
@@ -31,8 +41,20 @@ class Vector3{
 		return result;
 	}
 
+	normalize(){
+		let length = Math.sqrt(this.x ** 2 + this.y ** 2 + this.y ** 2);
+
+		return this;
+	}
+
 	clone(){
 		return new Vector3(this.x, this.y, this.z);
+	}
+
+	copy(vec){
+		this.x = vec.x;
+		this.y = vec.y;
+		this.z = vec.z;
 	}
 
 	toArray(){
