@@ -33,6 +33,7 @@ let endStream = function(stream){
 	});
 };
 
+
 // time in seconds
 function now(){
 	let hrTime = process.hrtime();
@@ -145,20 +146,10 @@ function createChildAABB(aabb, index){
 
 class RegionsFilter{
 
-	constructor(path, regions, outPath){
+	constructor(path, clipRegions){
 
 		this.path = path;
-		this.clipRegions = regions;
-		this.outPath = outPath;
-	}
-
-	static filter(path, regions, outPath){
-
-		let rfilter = new RegionsFilter(path, regions, outPath);
-
-		rfilter.traversePointcloud();
-
-
+		this.clipRegions = clipRegions;
 	}
 
 	async findVisibleNodes(boundingBox){
@@ -221,17 +212,49 @@ class RegionsFilter{
 		return visibleNodes;
 	}
 
-	async traversePointcloud(){
+	async estimate(){
+
+		let cloudjsContent;
+		try{
+			cloudjsContent = await fs.promises.readFile(this.path, "utf8");
+		}catch(e){
+			console.log(e);
+			return null;
+		}
+
+		this.cloudjs = JSON.parse(cloudjsContent.toString());
+
+		let attributes = new PointAttributes(this.cloudjs.pointAttributes.map(name => PointAttribute[name]));
+
+		let boundingBox = new Box3(
+			new Vector3(this.cloudjs.boundingBox.lx, this.cloudjs.boundingBox.ly, this.cloudjs.boundingBox.lz),
+			new Vector3(this.cloudjs.boundingBox.ux, this.cloudjs.boundingBox.uy, this.cloudjs.boundingBox.uz)
+		);
+
+		let visibleNodes = await this.findVisibleNodes(boundingBox);
+
+		let totalBytes = 0;
+		for(let node of visibleNodes){
+			
+			let hierarchyPath = getHierarchyPath(node.name, this.cloudjs.hierarchyStepSize);
+			let nodePath = `${this.path}/../data/${hierarchyPath}/${node.name}.bin`;
+
+			let stat = await fs.promises.stat(nodePath);
+
+			totalBytes += stat.size;
+		}
+
+		let estimate = {
+			numNodes: visibleNodes.length,
+			numPoints: totalBytes / attributes.bytes
+		};
+
+		return estimate;
+	}
+
+	async filter(outPath){
 
 		let start = now();
-
-		//let data;
-		//try{
-		//	data = await readFile(this.path);
-		//}catch(e){
-		//	console.log(e);
-		//	exit(1);
-		//}
 
 		let cloudjsContent;
 		try{
@@ -257,10 +280,9 @@ class RegionsFilter{
 		let inside = 0;
 		let outside = 0;
 		let lines = [];
-		//let outFile = "test.las";
-		let outFile = `${this.outPath}/clipped.las`;
+		let outFile = `${outPath}/clipped.las`;
 
-		await fs.promises.mkdir(this.outPath);
+		await fs.promises.mkdir(outPath);
 		let wstream = fs.createWriteStream(outFile);
 
 		let lasHeader = new LASHeader();
@@ -456,7 +478,7 @@ class RegionsFilter{
 			"clip regions": this.clipRegions
 		};
 
-		let infoPath = `${this.outPath}/report.json`;
+		let infoPath = `${outPath}/report.json`;
 		let infoString = JSON.stringify(infos, null, "\t");
 		infoString = infoString.replace(/"<jsremove>/g, "");
 		infoString = infoString.replace(/<jsremove>"/g, "");
