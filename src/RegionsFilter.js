@@ -145,15 +145,16 @@ function createChildAABB(aabb, index){
 
 class RegionsFilter{
 
-	constructor(path, regions){
+	constructor(path, regions, outPath){
 
 		this.path = path;
 		this.clipRegions = regions;
+		this.outPath = outPath;
 	}
 
-	static filter(path, regions){
+	static filter(path, regions, outPath){
 
-		let rfilter = new RegionsFilter(path, regions);
+		let rfilter = new RegionsFilter(path, regions, outPath);
 
 		rfilter.traversePointcloud();
 
@@ -224,9 +225,23 @@ class RegionsFilter{
 
 		let start = now();
 
-		let data = await readFile(this.path);
+		//let data;
+		//try{
+		//	data = await readFile(this.path);
+		//}catch(e){
+		//	console.log(e);
+		//	exit(1);
+		//}
 
-		this.cloudjs = JSON.parse(data.toString());
+		let cloudjsContent;
+		try{
+			cloudjsContent = await fs.promises.readFile(this.path, "utf8");
+		}catch(e){
+			console.log(e);
+			return;
+		}
+
+		this.cloudjs = JSON.parse(cloudjsContent.toString());
 
 		let attributes = new PointAttributes(this.cloudjs.pointAttributes.map(name => PointAttribute[name]));
 
@@ -242,7 +257,10 @@ class RegionsFilter{
 		let inside = 0;
 		let outside = 0;
 		let lines = [];
-		let outFile = "test.las";
+		//let outFile = "test.las";
+		let outFile = `${this.outPath}/clipped.las`;
+
+		await fs.promises.mkdir(this.outPath);
 		let wstream = fs.createWriteStream(outFile);
 
 		let lasHeader = new LASHeader();
@@ -418,6 +436,36 @@ class RegionsFilter{
 		let duration = end - start;
 		console.log(`filter duration: ${filterDuration.toFixed(3)}s`);
 		console.log(`total duration (with read/write): ${duration.toFixed(3)}s`);
+
+		
+		for(let region of this.clipRegions){
+			for(let plane of region.planes){
+				plane.toJSON = () => `<jsremove>{"normal": [${plane.normal.toArray().join(", ")}], "distance": ${plane.distance}}<jsremove>`;
+
+				//plane.normal.toJSON = () => plane.normal.toArray();
+			}
+		}
+
+		let infos = {
+			"path": this.path,
+			"nodes traversed": visibleNodes.length,
+			"points loaded": (inside + outside),
+			"points extracted": inside,
+			"duration total": `${duration.toFixed(3)}s`,
+			"duration filter": `${filterDuration.toFixed(3)}s`,
+			"clip regions": this.clipRegions
+		};
+
+		let infoPath = `${this.outPath}/report.json`;
+		let infoString = JSON.stringify(infos, null, "\t");
+		infoString = infoString.replace(/"<jsremove>/g, "");
+		infoString = infoString.replace(/<jsremove>"/g, "");
+		infoString = infoString.replace(/\\"/g, "\"");
+
+		console.log(infoString);
+
+		await fs.promises.writeFile(infoPath, infoString, {encoding: "utf8"});
+
 	}
 
 }

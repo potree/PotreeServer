@@ -5,6 +5,7 @@ const cors = require('cors');
 const spawnSync = require('child_process').spawnSync;
 const spawn = require('child_process').spawn;
 //const uuid = require('uuid');
+const uuidv4 = require('uuid/v4');
 const url = require('url');
 const http = require('http');
 const fs = require('fs');
@@ -132,11 +133,6 @@ if(fs.existsSync(settingsPath)){
 			let clipRegions = [];
 			for(let jregion of jRegions){
 
-				//for(let jplane of jregion){
-				//	let plane = new Plane(new Vector3(...jregion.slice(0,3)), jregion[3]);
-				//	planes.push(plane);
-				//}
-
 				let planes = jregion.map( jplane => {
 					return new Plane(new Vector3(...jplane.slice(0,3)), jplane[3]);
 				});
@@ -145,10 +141,12 @@ if(fs.existsSync(settingsPath)){
 				clipRegions.push(clipRegion);
 			}
 
-			let path = "D:/dev/pointclouds/archpro/heidentor/cloud.js";
-			//RegionFilter.filter(path, clipRegions);
+			let path = "C:/dev/workspaces/potree/develop/pointclouds/heidentor/cloud.js";
 
-			RegionsFilter.filter(path, clipRegions);
+			let uuid = uuidv4();
+			let outPath = `D:/temp/${uuid}`;
+
+			RegionsFilter.filter(path, clipRegions, outPath);
 
 		}catch(e){
 			//TODO
