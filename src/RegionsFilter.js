@@ -142,6 +142,20 @@ function createChildAABB(aabb, index){
 	return new Box3(min, max);
 }
 
+function escapeReportString(str){
+	let result = str.replace(/"<jsremove>/g, "");
+	result = result.replace(/<jsremove>"/g, "");
+	result = result.replace(/\\"/g, "\"");
+
+	return result;
+}
+
+let FilterStatus = {
+	UNDEFINED: "UNDEFINED",
+	ESTIMATING: "ESTIMATING",
+	FILTERING: "FILTERING",
+	FINISHED: "FINISHED",
+};
 
 
 class RegionsFilter{
@@ -150,6 +164,22 @@ class RegionsFilter{
 
 		this.path = path;
 		this.clipRegions = clipRegions;
+		this.filterCalled = false;
+
+		this.estimation =  {
+			numNodes: 0,
+			numPoints: 0	
+		};
+
+		this.progress = {
+			numNodes: 0,
+			numPoints: 0,
+			inside: 0,
+			outside: 0,
+			timestamps: {}
+		};
+
+		this.status = FilterStatus.UNDEFINED;
 	}
 
 	async findVisibleNodes(boundingBox){
@@ -214,6 +244,8 @@ class RegionsFilter{
 
 	async estimate(){
 
+		this.progress.timestamps["estimate-start"] = now();
+
 		let cloudjsContent;
 		try{
 			cloudjsContent = await fs.promises.readFile(this.path, "utf8");
@@ -221,6 +253,8 @@ class RegionsFilter{
 			console.log(e);
 			return null;
 		}
+
+		this.status = FilterStatus.ESTIMATING;
 
 		this.cloudjs = JSON.parse(cloudjsContent.toString());
 
@@ -244,23 +278,102 @@ class RegionsFilter{
 			totalBytes += stat.size;
 		}
 
-		let estimate = {
+		let estimation = {
 			numNodes: visibleNodes.length,
 			numPoints: totalBytes / attributes.bytes
 		};
 
-		return estimate;
+		this.estimation = estimation;
+
+		this.progress.timestamps["estimate-end"] = now();
+
+		return estimation;
+	}
+
+	async updateReport(){
+		let infos = {
+			"status": this.status,
+			"path": this.path,
+		};
+
+		{
+			let durations = {};
+
+			let estimateStart = this.progress.timestamps["estimate-start"];
+			let estimateEnd = this.progress.timestamps["estimate-end"];
+
+			let filterStart = this.progress.timestamps["filter-start"];
+			let filterEnd = this.progress.timestamps["filter-end"];
+
+			if(estimateEnd){
+				let estimateDuration = estimateEnd - estimateStart;
+				durations["estimate"] = `${estimateDuration.toFixed(3)}s`;
+			}
+
+			if(filterEnd){
+				let filterDuration = filterEnd - filterStart;
+				durations["filter"] = `${filterDuration.toFixed(3)}s`;
+			}
+
+			infos.durations = durations;
+		}
+
+		for(let region of this.clipRegions){
+			for(let plane of region.planes){
+				plane.toJSON = () => `<jsremove>{"normal": [${plane.normal.toArray().join(", ")}], "distance": ${plane.distance}}<jsremove>`;
+			}
+		}
+
+		infos["estimate"] = {
+			nodes: this.estimation.numNodes,
+			points: this.estimation.numPoints,
+		};
+
+		infos["progress"] = {
+			"processed nodes": this.progress.numNodes,
+			"processed points": this.progress.numPoints,
+			"accepted points": this.progress.inside,
+			"discarded points": this.progress.outside
+		};
+		
+		infos["clip regions"] = this.clipRegions;
+		
+		let infoString = JSON.stringify(infos, null, "\t");
+		infoString = escapeReportString(infoString);
+
+		await fs.promises.writeFile(this.reportPath, infoString, {encoding: "utf8"});
 	}
 
 	async filter(outPath){
 
-		let start = now();
+		this.progress.timestamps["filter-start"] = now();
+
+		if(this.filterCalled){
+			throw new Error("Can't call filter twice. Create a new RegionsFilter instead.");
+		}
+		
+		this.filterCalled = true;
+
+		this.reportPath = `${outPath}/report.json`;
+
+		await fs.promises.mkdir(outPath);
+
+		this.status = FilterStatus.FILTERING;
+		this.updateReport();
 
 		let cloudjsContent;
 		try{
 			cloudjsContent = await fs.promises.readFile(this.path, "utf8");
 		}catch(e){
 			console.log(e);
+
+			await fs.promises.unlink(this.reportPath);
+
+			let files = await fs.readdir(outPath);
+			if(files.length === 0){
+				fs.promises.rmdir(outPath);
+			}
+
 			return;
 		}
 
@@ -279,10 +392,8 @@ class RegionsFilter{
 
 		let inside = 0;
 		let outside = 0;
-		let lines = [];
-		let outFile = `${outPath}/clipped.las`;
+		let outFile = `${outPath}/filtered.las`;
 
-		await fs.promises.mkdir(outPath);
 		let wstream = fs.createWriteStream(outFile);
 
 		let lasHeader = new LASHeader();
@@ -294,27 +405,10 @@ class RegionsFilter{
 
 		let filterDuration = 0;
 
-		// adding var, let or const specifiers to these variables carries huge performance penalties
-		// like from 1.1s to 1.3s. 
 		let readPos = attributes.contains(PointAttribute.POSITION_CARTESIAN);
 		let readColor = attributes.contains(PointAttribute.COLOR_PACKED);
 		let offsetPos = attributes.offsetOf(PointAttribute.POSITION_CARTESIAN);
 		let offsetColor = attributes.offsetOf(PointAttribute.COLOR_PACKED);
-
-		//ux = 0;
-		//uy = 0;
-		//uz = 0;
-		//x = 0;
-		//y = 0;
-		//z = 0;
-		//r = 0;
-		//g = 0;
-		//b = 0;
-
-		//readPos = true;
-		//readColor = true;
-		//offsetPos = 0;
-		//offsetColor = 12;
 
 		for(let node of visibleNodes){
 
@@ -349,7 +443,6 @@ class RegionsFilter{
 				for(let i = 0; i < numPoints; i++){
 
 					inOffset = attributes.bytes * i;
-					let poffset = 0;
 
 					if(readPos){
 						ux = buffer.readUInt32LE(inOffset + offsetPos + 0);
@@ -433,6 +526,14 @@ class RegionsFilter{
 				filterDuration += filterEnd - filterStart;
 
 				wstream.write(outBuffer);
+
+				this.progress.numNodes++;
+				this.progress.numPoints += numPoints;
+				this.progress.inside = inside;
+				this.progress.outside = outside;
+				this.progress.timestamps["filter-end"] = now();
+
+				this.updateReport();
 			});
 		}
 
@@ -454,40 +555,10 @@ class RegionsFilter{
 		console.log(`inside: ${inside.toLocaleString("en")}, outside: ${outside.toLocaleString("en")}`);
 		console.log(`wrote ${outFile} (${parseInt(mb)}MB)`);
 
-		let end = now();
-		let duration = end - start;
-		console.log(`filter duration: ${filterDuration.toFixed(3)}s`);
-		console.log(`total duration (with read/write): ${duration.toFixed(3)}s`);
-
+		this.status = FilterStatus.FINISHED;
+		this.progress.timestamps["filter-end"] = now();
 		
-		for(let region of this.clipRegions){
-			for(let plane of region.planes){
-				plane.toJSON = () => `<jsremove>{"normal": [${plane.normal.toArray().join(", ")}], "distance": ${plane.distance}}<jsremove>`;
-
-				//plane.normal.toJSON = () => plane.normal.toArray();
-			}
-		}
-
-		let infos = {
-			"path": this.path,
-			"nodes traversed": visibleNodes.length,
-			"points loaded": (inside + outside),
-			"points extracted": inside,
-			"duration total": `${duration.toFixed(3)}s`,
-			"duration filter": `${filterDuration.toFixed(3)}s`,
-			"clip regions": this.clipRegions
-		};
-
-		let infoPath = `${outPath}/report.json`;
-		let infoString = JSON.stringify(infos, null, "\t");
-		infoString = infoString.replace(/"<jsremove>/g, "");
-		infoString = infoString.replace(/<jsremove>"/g, "");
-		infoString = infoString.replace(/\\"/g, "\"");
-
-		console.log(infoString);
-
-		await fs.promises.writeFile(infoPath, infoString, {encoding: "utf8"});
-
+		await this.updateReport();
 	}
 
 }

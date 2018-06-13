@@ -185,7 +185,7 @@ function clipRegionsFromRequest(req){
 			regionsFilter.filter(outputDirectory);
 
 			response = {
-				status: "WORKING",
+				status: "FILTERING",
 				handle: handle,
 				estimate: {
 					numNodes: estimate.numNodes,
@@ -229,8 +229,12 @@ function clipRegionsFromRequest(req){
 			res.send(responseString);
 			res.end();
 		}else{
+
+			let reportString = await fs.promises.readFile(reportPath);
+			let report = JSON.parse(reportString);
+
 			let response = {
-				status: "FINISHED",
+				status: report.status,
 				message: "yeah!"
 			};
 			let responseString = JSON.stringify(response, null, "\t");
