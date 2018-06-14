@@ -158,11 +158,12 @@ let FilterStatus = {
 };
 
 
+
 class RegionsFilter{
 
-	constructor(path, clipRegions){
+	constructor(pointclouds, clipRegions){
 
-		this.path = path;
+		this.pointclouds = pointclouds;
 		this.clipRegions = clipRegions;
 		this.filterCalled = false;
 
@@ -182,9 +183,13 @@ class RegionsFilter{
 		this.status = FilterStatus.UNDEFINED;
 	}
 
-	async findVisibleNodes(boundingBox){
+	async findVisibleNodes(pointcloud){
 
-		let hrcRoot = `${this.path}/../data/r/r.hrc`;
+		let {metadata, boundingBox} = pointcloud;
+		let clipRegions = this.clipRegions;
+
+
+		let hrcRoot = `${pointcloud.path}/../data/r/r.hrc`;
 		let hrcData = await readFile(hrcRoot);
 		hrcData = new Uint8Array(hrcData);
 		
@@ -209,10 +214,10 @@ class RegionsFilter{
 						child.box = createChildAABB(node.box, child.index);
 
 						let intersects = false;
-						for(let clipRegion of this.clipRegions){
+						for(let clipRegion of clipRegions){
 							intersects = intersects || clipRegion.intersectsBox(child.box);
 						}
-						let atHierarchyStep = (child.level() % this.cloudjs.hierarchyStepSize) === 0;
+						let atHierarchyStep = (child.level() % metadata.hierarchyStepSize) === 0;
 
 						if(intersects && !atHierarchyStep){
 							visibleNodes.push(child);
@@ -220,8 +225,8 @@ class RegionsFilter{
 						}else if(intersects && atHierarchyStep){
 							visibleNodes.push(child);
 
-							let hierarchyPath = getHierarchyPath(child.name, this.cloudjs.hierarchyStepSize);
-							let hrcPath = `${this.path}/../data/${hierarchyPath}/${child.name}.hrc`;
+							let hierarchyPath = getHierarchyPath(child.name, metadata.hierarchyStepSize);
+							let hrcPath = `${pointcloud.path}/../data/${hierarchyPath}/${child.name}.hrc`;
 
 							let hrcData = await readFile(hrcPath);
 							hrcData = new Uint8Array(hrcData);
@@ -230,7 +235,6 @@ class RegionsFilter{
 							croot.box = child.box;
 							croot.index = child.index;
 
-							//child.children = croot.children;
 							stack.push(croot);
 						}
 
@@ -246,48 +250,72 @@ class RegionsFilter{
 
 		this.progress.timestamps["estimate-start"] = now();
 
-		let cloudjsContent;
-		try{
-			cloudjsContent = await fs.promises.readFile(this.path, "utf8");
-		}catch(e){
-			console.log(e);
-			return null;
-		}
-
 		this.status = FilterStatus.ESTIMATING;
 
-		this.cloudjs = JSON.parse(cloudjsContent.toString());
+		for(let pointcloud of this.pointclouds){
 
-		let attributes = new PointAttributes(this.cloudjs.pointAttributes.map(name => PointAttribute[name]));
+			let metadataString;
+			try{
+				metadataString = await fs.promises.readFile(pointcloud.path, "utf8");
+			}catch(e){
+				console.log(e);
+				return null;
+			}
 
-		let boundingBox = new Box3(
-			new Vector3(this.cloudjs.boundingBox.lx, this.cloudjs.boundingBox.ly, this.cloudjs.boundingBox.lz),
-			new Vector3(this.cloudjs.boundingBox.ux, this.cloudjs.boundingBox.uy, this.cloudjs.boundingBox.uz)
-		);
+			let metadata = JSON.parse(metadataString.toString());
+			pointcloud.metadata = metadata;
 
-		let visibleNodes = await this.findVisibleNodes(boundingBox);
+			let attributes = new PointAttributes(metadata.pointAttributes.map(name => PointAttribute[name]));
+			pointcloud.attributes = attributes;
 
-		let totalBytes = 0;
-		for(let node of visibleNodes){
-			
-			let hierarchyPath = getHierarchyPath(node.name, this.cloudjs.hierarchyStepSize);
-			let nodePath = `${this.path}/../data/${hierarchyPath}/${node.name}.bin`;
+			let boundingBox = new Box3(
+				new Vector3(metadata.boundingBox.lx, metadata.boundingBox.ly, metadata.boundingBox.lz),
+				new Vector3(metadata.boundingBox.ux, metadata.boundingBox.uy, metadata.boundingBox.uz)
+			);
+			pointcloud.boundingBox = boundingBox;
 
-			let stat = await fs.promises.stat(nodePath);
+			let visibleNodes = await this.findVisibleNodes(pointcloud);
+			pointcloud.visibleNodes = visibleNodes;
 
-			totalBytes += stat.size;
+			let promises = [];
+			let totalBytes = 0;
+			for(let node of visibleNodes){
+				
+				let hierarchyPath = getHierarchyPath(node.name, metadata.hierarchyStepSize);
+				let nodePath = `${pointcloud.path}/../data/${hierarchyPath}/${node.name}.bin`;
+
+				let promise = fs.promises.stat(nodePath).then( stat => {
+					totalBytes += stat.size;
+				});
+				promises.push(promise);
+			}
+			await Promise.all(promises);
+
+			let estimate = {
+				numNodes: visibleNodes.length,
+				numPoints: totalBytes / attributes.bytes
+			};
+
+			pointcloud.estimate = estimate;
 		}
 
-		let estimation = {
-			numNodes: visibleNodes.length,
-			numPoints: totalBytes / attributes.bytes
+		let totalEstimate = {
+			numPointclouds: this.pointclouds.length,
+			numNodes: 0,
+			numPoints: 0
 		};
 
-		this.estimation = estimation;
+		for(let pointcloud of this.pointclouds){
+			totalEstimate.numPointclouds++;
+			totalEstimate.numNodes += pointcloud.estimate.numNodes;
+			totalEstimate.numPoints += pointcloud.estimate.numPoints;
+		}
+
+		this.totalEstimate = totalEstimate;
 
 		this.progress.timestamps["estimate-end"] = now();
 
-		return estimation;
+		return totalEstimate;
 	}
 
 	async updateReport(){
@@ -318,15 +346,28 @@ class RegionsFilter{
 			infos.durations = durations;
 		}
 
+		let jPointclouds = [];
+		for(let pointcloud of this.pointclouds){
+			let jPointcloud = {
+				path: pointcloud.path,
+				transform: pointcloud.transform,
+				estimate: pointcloud.estimate,
+				filterDuration: `${pointcloud.filterDuration.toFixed(3)}s`
+			};
+			jPointclouds.push(jPointcloud);
+
+			pointcloud.transform.toJSON = () => `<jsremove>[${pointcloud.transform.join(",")}]<jsremove>`;
+		}
+
 		for(let region of this.clipRegions){
 			for(let plane of region.planes){
-				plane.toJSON = () => `<jsremove>{"normal": [${plane.normal.toArray().join(", ")}], "distance": ${plane.distance}}<jsremove>`;
+				plane.toJSON = () => `<jsremove>{"normal": [${plane.normal.toArray().join(",")}], "distance": ${plane.distance}}<jsremove>`;
 			}
 		}
 
 		infos["estimate"] = {
-			nodes: this.estimation.numNodes,
-			points: this.estimation.numPoints,
+			nodes: this.totalEstimate.numNodes,
+			points: this.totalEstimate.numPoints,
 		};
 
 		infos["progress"] = {
@@ -336,6 +377,7 @@ class RegionsFilter{
 			"discarded points": this.progress.outside
 		};
 		
+		infos["pointclouds"] = jPointclouds;
 		infos["clip regions"] = this.clipRegions;
 		
 		let infoString = JSON.stringify(infos, null, "\t");
@@ -344,66 +386,24 @@ class RegionsFilter{
 		await fs.promises.writeFile(this.reportPath, infoString, {encoding: "utf8"});
 	}
 
-	async filter(outPath){
-
-		this.progress.timestamps["filter-start"] = now();
-
-		if(this.filterCalled){
-			throw new Error("Can't call filter twice. Create a new RegionsFilter instead.");
-		}
-		
-		this.filterCalled = true;
-
-		this.reportPath = `${outPath}/report.json`;
-
-		await fs.promises.mkdir(outPath);
-
-		this.status = FilterStatus.FILTERING;
-		this.updateReport();
-
-		let cloudjsContent;
-		try{
-			cloudjsContent = await fs.promises.readFile(this.path, "utf8");
-		}catch(e){
-			console.log(e);
-
-			await fs.promises.unlink(this.reportPath);
-
-			let files = await fs.readdir(outPath);
-			if(files.length === 0){
-				fs.promises.rmdir(outPath);
-			}
-
-			return;
-		}
-
-		this.cloudjs = JSON.parse(cloudjsContent.toString());
-
-		let attributes = new PointAttributes(this.cloudjs.pointAttributes.map(name => PointAttribute[name]));
-
-		let boundingBox = new Box3(
-			new Vector3(this.cloudjs.boundingBox.lx, this.cloudjs.boundingBox.ly, this.cloudjs.boundingBox.lz),
-			new Vector3(this.cloudjs.boundingBox.ux, this.cloudjs.boundingBox.uy, this.cloudjs.boundingBox.uz)
-		);
-
-		let visibleNodes = await this.findVisibleNodes(boundingBox);
+	async filterPointcloud(pointcloud, outPath){
+		let start = now();
 
 		let promises = [];
 
+		let {metadata, boundingBox, attributes, visibleNodes} = pointcloud;
+
 		let inside = 0;
 		let outside = 0;
-		let outFile = `${outPath}/filtered.las`;
 
-		let wstream = fs.createWriteStream(outFile);
+		let wstream = fs.createWriteStream(outPath);
 
 		let lasHeader = new LASHeader();
-		lasHeader.scale = this.cloudjs.scale;
+		lasHeader.scale = metadata.scale;
 		lasHeader.min = boundingBox.min.toArray();
 		lasHeader.max = boundingBox.max.toArray();
 
 		wstream.write(lasHeader.toBuffer());
-
-		let filterDuration = 0;
 
 		let readPos = attributes.contains(PointAttribute.POSITION_CARTESIAN);
 		let readColor = attributes.contains(PointAttribute.COLOR_PACKED);
@@ -412,8 +412,8 @@ class RegionsFilter{
 
 		for(let node of visibleNodes){
 
-			let hierarchyPath = getHierarchyPath(node.name, this.cloudjs.hierarchyStepSize);
-			let nodePath = `${this.path}/../data/${hierarchyPath}/${node.name}.bin`;
+			let hierarchyPath = getHierarchyPath(node.name, metadata.hierarchyStepSize);
+			let nodePath = `${pointcloud.path}/../data/${hierarchyPath}/${node.name}.bin`;
 			let promise = readFile(nodePath);
 			promises.push(promise);
 
@@ -449,9 +449,9 @@ class RegionsFilter{
 						uy = buffer.readUInt32LE(inOffset + offsetPos + 4);
 						uz = buffer.readUInt32LE(inOffset + offsetPos + 8);
 
-						x = ux * this.cloudjs.scale + node.box.min.x;
-						y = uy * this.cloudjs.scale + node.box.min.y;
-						z = uz * this.cloudjs.scale + node.box.min.z;
+						x = ux * metadata.scale + node.box.min.x;
+						y = uy * metadata.scale + node.box.min.y;
+						z = uz * metadata.scale + node.box.min.z;
 					}
 							
 					if(readColor){
@@ -473,9 +473,9 @@ class RegionsFilter{
 					if(isInside){
 						outOffset = insideThis * lasRecordLength;
 
-						let ux = (x - boundingBox.min.x) / this.cloudjs.scale;
-						let uy = (y - boundingBox.min.y) / this.cloudjs.scale;
-						let uz = (z - boundingBox.min.z) / this.cloudjs.scale;
+						let ux = (x - boundingBox.min.x) / metadata.scale;
+						let uy = (y - boundingBox.min.y) / metadata.scale;
+						let uz = (z - boundingBox.min.z) / metadata.scale;
 
 						// relatively slow
 						//outBuffer.writeInt32LE(ux, outOffset + 0);
@@ -522,9 +522,6 @@ class RegionsFilter{
 
 				outBuffer = outBuffer.subarray(0, insideThis * lasRecordLength);
 
-				let filterEnd = now();
-				filterDuration += filterEnd - filterStart;
-
 				wstream.write(outBuffer);
 
 				this.progress.numNodes++;
@@ -532,8 +529,6 @@ class RegionsFilter{
 				this.progress.inside = inside;
 				this.progress.outside = outside;
 				this.progress.timestamps["filter-end"] = now();
-
-				this.updateReport();
 			});
 		}
 
@@ -544,18 +539,55 @@ class RegionsFilter{
 		// update header
 		lasHeader.numPoints = inside;
 		let headerBuffer = lasHeader.toBuffer();
-		let filehandle = await fs.promises.open(outFile, 'r+');
+		let filehandle = await fs.promises.open(outPath, 'r+');
 		await filehandle.write(headerBuffer);
 		await filehandle.close();
 
-		let stats = fs.statSync(outFile);
+		let end = now();
+		let duration = (end - start);
+		pointcloud.filterDuration = duration;
+
+		let stats = fs.statSync(outPath);
 		let mb = stats.size / (1024 * 1024)
 
+		console.log(`=====================================`);
+		console.log(`== point cloud filter results`);
+		console.log(`=====================================`);
+		console.log(`path: ${pointcloud.path}`);
 		console.log(`visible nodes: ${visibleNodes.length}`);
 		console.log(`inside: ${inside.toLocaleString("en")}, outside: ${outside.toLocaleString("en")}`);
-		console.log(`wrote ${outFile} (${parseInt(mb)}MB)`);
+		console.log(`wrote result to ${outPath} (${parseInt(mb)}MB)`);
+		console.log(`report: ${this.reportPath} (${parseInt(mb)}MB)`);
+		console.log(`=====================================`);
+	}
+
+	async filter(outPath){
+
+		this.progress.timestamps["filter-start"] = now();
+
+		if(this.filterCalled){
+			throw new Error("Can't call filter twice. Create a new RegionsFilter instead.");
+		}
+		
+		this.filterCalled = true;
+
+		this.reportPath = `${outPath}/report.json`;
+
+		await fs.promises.mkdir(outPath);
+
+		this.status = FilterStatus.FILTERING;
+
+		let i = 0;
+		for(let pointcloud of this.pointclouds){
+			let pcResultPath = `${outPath}/result_${i}.las`;
+
+			await this.filterPointcloud(pointcloud, pcResultPath);
+
+			i++;
+		}
 
 		this.status = FilterStatus.FINISHED;
+
 		this.progress.timestamps["filter-end"] = now();
 		
 		await this.updateReport();

@@ -3,7 +3,10 @@
 let PointAttribute = {
 	POSITION_CARTESIAN: {bytes: 12},
 	COLOR_PACKED: {bytes: 4},
-	NORMAL_SPHEREMAPPED: {bytes: 2}
+	RGBA: {bytes: 4},
+	INTENSITY: {bytes: 2},
+	CLASSIFICATION: {bytes: 1},
+	NORMAL_SPHEREMAPPED: {bytes: 2},
 };
 
 

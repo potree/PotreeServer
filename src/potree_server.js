@@ -28,8 +28,8 @@ logger.info(`dirname ${__dirname}`);
 let settingsPath = `./settings.json`;
 let settings = null;
 
-let maxNodes = 1000;
-let maxPoints = 2 * 1000 * 1000;
+let maxNodes = 20 * 1000;
+let maxPoints = 50 * 1000 * 1000;
 
 logger.info("starting potree server");
 logger.info(`Using settings from: '${settingsPath}'`);
@@ -46,7 +46,35 @@ if(fs.existsSync(settingsPath)){
 
 
 
+function pointcloudsFromRequest(req){
+	let purl = url.parse(req.url, true);
+	let query = purl.query;
 
+	let v = (value, def) => ((value === undefined) ? def : value);
+
+	let qPointclouds = v(query["pointclouds"], "");
+	let jPointclouds = JSON.parse(qPointclouds);
+
+	for(let pointcloud of jPointclouds){
+
+		let resolvedPath = null;
+		for(let path of settings.path){
+			let potentialResolve = `${path}${pointcloud.path}`;
+
+			if(fs.existsSync(potentialResolve)){
+				resolvedPath = potentialResolve;
+			}
+		}
+
+		if(resolvedPath === null){
+			throw new Error(`path could not be resolved / point cloud not found: ${pointcloud.path}`);
+		}else{
+			pointcloud.path = resolvedPath;
+		}
+	}
+
+	return jPointclouds;
+}
 
 function clipRegionsFromRequest(req){
 	let purl = url.parse(req.url, true);
@@ -153,11 +181,21 @@ function clipRegionsFromRequest(req){
 	app.use("/create_regions_filter", async function (req, res, next) {
 
 		let clipRegions = clipRegionsFromRequest(req);
+		let pointclouds = pointcloudsFromRequest(req);
 
-		let pointcloudPath = "C:/dev/workspaces/potree/develop/pointclouds/heidentor/cloud.js";
-		let regionsFilter = new RegionsFilter(pointcloudPath, clipRegions);
+		let regionsFilter = new RegionsFilter(pointclouds, clipRegions);
 
-		let estimate = await regionsFilter.estimate();
+		let estimate = await regionsFilter.estimate().catch(e => {
+			let response = {
+				status: "ERROR",
+				message: "estimate failed",
+			};
+
+			res.json(response);
+			res.end();
+
+			throw e;
+		});
 
 		let requestTooBig = estimate.numNodes > maxNodes || estimate.numPoints > maxPoints;
 
