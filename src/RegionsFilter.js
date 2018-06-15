@@ -1,6 +1,6 @@
 
 
-const os = require("os");
+//const os = require("os");
 const fs = require('fs');
 const Vector3 = require("./Vector3.js").Vector3;
 const Box3 = require("./Box3.js").Box3;
@@ -9,6 +9,7 @@ const PlaneClipRegion = require("./PlaneClipRegion.js").PlaneClipRegion;
 const LASHeader = require("./LASHeader.js").LASHeader;
 const PointAttribute = require("./PointAttributes.js").PointAttribute;
 const PointAttributes = require("./PointAttributes.js").PointAttributes;
+const Matrix4 = require("./Matrix4.js").Matrix4;
 
 
 let readFile = function(file){
@@ -410,6 +411,9 @@ class RegionsFilter{
 		let offsetPos = attributes.offsetOf(PointAttribute.POSITION_CARTESIAN);
 		let offsetColor = attributes.offsetOf(PointAttribute.COLOR_PACKED);
 
+		let transform = new Matrix4();
+		transform.elements = pointcloud.transform;
+
 		for(let node of visibleNodes){
 
 			let hierarchyPath = getHierarchyPath(node.name, metadata.hierarchyStepSize);
@@ -418,8 +422,6 @@ class RegionsFilter{
 			promises.push(promise);
 
 			promise.then( (result) => {
-
-				let filterStart = now();
 
 				let buffer = result;
 
@@ -463,6 +465,8 @@ class RegionsFilter{
 					vec.x = x;
 					vec.y = y;
 					vec.z = z;
+
+					vec.applyMatrix4(transform);
 
 					let isInside = false;
 					for(let clipRegion of this.clipRegions){
