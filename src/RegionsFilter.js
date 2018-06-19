@@ -187,7 +187,18 @@ class RegionsFilter{
 	async findVisibleNodes(pointcloud){
 
 		let {metadata, boundingBox} = pointcloud;
-		let clipRegions = this.clipRegions;
+		//let clipRegions = this.clipRegions;
+
+		let transform = new Matrix4();
+		transform.elements = pointcloud.transform;
+
+		let inverse = transform.getInverse();
+
+		let localClipRegions = [];
+		for(let clipRegion of this.clipRegions){
+			let localRegion = clipRegion.clone().applyMatrix4(inverse);
+			localClipRegions.push(localRegion);
+		}
 
 
 		let hrcRoot = `${pointcloud.path}/../data/r/r.hrc`;
@@ -215,7 +226,7 @@ class RegionsFilter{
 						child.box = createChildAABB(node.box, child.index);
 
 						let intersects = false;
-						for(let clipRegion of clipRegions){
+						for(let clipRegion of localClipRegions){
 							intersects = intersects || clipRegion.intersectsBox(child.box);
 						}
 						let atHierarchyStep = (child.level() % metadata.hierarchyStepSize) === 0;
@@ -414,6 +425,14 @@ class RegionsFilter{
 		let transform = new Matrix4();
 		transform.elements = pointcloud.transform;
 
+		let inverse = transform.getInverse();
+
+		let localClipRegions = [];
+		for(let clipRegion of this.clipRegions){
+			let localRegion = clipRegion.clone().applyMatrix4(inverse);
+			localClipRegions.push(localRegion);
+		}
+
 		for(let node of visibleNodes){
 
 			let hierarchyPath = getHierarchyPath(node.name, metadata.hierarchyStepSize);
@@ -466,10 +485,11 @@ class RegionsFilter{
 					vec.y = y;
 					vec.z = z;
 
-					vec.applyMatrix4(transform);
+					//vec.applyMatrix4(transform);
 
 					let isInside = false;
-					for(let clipRegion of this.clipRegions){
+					//for(let clipRegion of this.clipRegions){
+					for(let clipRegion of localClipRegions){
 						isInside = isInside || clipRegion.containsPoint(vec);
 					}
 					//let isInside = clipRegion.containsPoint(vec);
@@ -554,14 +574,20 @@ class RegionsFilter{
 		let stats = fs.statSync(outPath);
 		let mb = stats.size / (1024 * 1024)
 
+		let percentInside = inside / (inside + outside);
+		percentInside = (percentInside * 100).toFixed(2);
+
+		let pointsPerSec = parseInt((inside + outside) / duration);
+
 		console.log(`=====================================`);
 		console.log(`== point cloud filter results`);
 		console.log(`=====================================`);
 		console.log(`path: ${pointcloud.path}`);
-		console.log(`visible nodes: ${visibleNodes.length}`);
-		console.log(`inside: ${inside.toLocaleString("en")}, outside: ${outside.toLocaleString("en")}`);
+		console.log(`visible nodes: ${visibleNodes.length.toLocaleString("en")}`);
+		console.log(`inside: ${inside.toLocaleString("en")} (${percentInside}%), outside: ${outside.toLocaleString("en")}`);
 		console.log(`wrote result to ${outPath} (${parseInt(mb)}MB)`);
 		console.log(`report: ${this.reportPath} (${parseInt(mb)}MB)`);
+		console.log(`duration: ${duration.toFixed(3)}s ( ${pointsPerSec.toLocaleString("en")} points / second )`);
 		console.log(`=====================================`);
 	}
 

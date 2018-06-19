@@ -5,6 +5,7 @@
 //
 
 let Vector3 = require("./Vector3.js").Vector3;
+let Vector4 = require("./Vector4.js").Vector4;
 
 
 class Plane{
@@ -26,7 +27,18 @@ class Plane{
 		return distance;
 	}
 
-	
+	applyMatrix4(matrix){
+		let newNormal = new Vector4(this.normal.x, this.normal.y, this.normal.z, 0).applyMatrix4(matrix);
+		let newCoplanar = this.normal.clone().multiplyScalar(-this.distance).applyMatrix4(matrix);
+
+		this.setFromNormalAndCoplanarPoint(newNormal, newCoplanar);
+	}
+
+	clone(){
+		let cloned = new Plane(this.normal.clone(), this.distance);
+
+		return cloned;
+	}
 
 }
 

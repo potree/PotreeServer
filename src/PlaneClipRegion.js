@@ -49,7 +49,22 @@ class PlaneClipRegion{
 		}
 
 		return true;
+	}
 
+	applyMatrix4(matrix){
+		for(let plane of this.planes){
+			plane.applyMatrix4(matrix);
+		}
+
+		return this;
+	}
+
+	clone(){
+
+		let clonedPlanes = this.planes.map( plane => plane.clone());
+		let clonedRegion = new PlaneClipRegion(clonedPlanes);
+
+		return clonedRegion;
 	}
 
 }
