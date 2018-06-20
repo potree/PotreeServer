@@ -1,41 +1,25 @@
 
-# Development
-
-install dependencies from package.json
-
-    npm install
-
-start server
-
-    cd build/potree_server
-    node potree_server.js
-
-watch and rebuild/restart on changes in source 
-
-    gulp watch
+Status: experimental / crashy
 
 
-# Installation
+# Installation / Build
 
-Copy build/potree_server to any location
 
-Install dependencies form package.json and run server
+1.) Install dependencies as specified package.json
 
-    npm install 
-	node potree_server.js 
+    npm install --save
+
+2.) Open settings.json and adjust values for path and outputDirectory.
+
+Path points to the root folder of your main/file server. Potree server will attempt to look for point clouds relative to this location. 
+
+OutputDirectory is where the filter results will be stored. At this time, this folder won't automatically be cleared of past results so you have to make sure to clean it up manually.
+
+
+3.) Run the server:
+
+
+
+	node ./src/potree_server.js
 	
-Alternatively, you can use pm2 to manage the server process 
-
-    npm install 
-	npm install pm2 -g 
-	pm2 start potree_server.js 
-	
-	# list running processes 
-	pm2 list 
-	
-	# stop process by name 
-	pm2 stop potree_server
-
-
-
 

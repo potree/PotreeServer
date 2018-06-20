@@ -1,0 +1,19 @@
+{
+	"port": 3000,
+
+	"#": "(server-)paths from which to start looking for point clouds",
+	"path": [
+		"C:/dev/workspaces/potree/develop"
+	],
+	"outputDirectory": "D:/dev/temp",
+
+	"maxActiveWorkers": 1,
+	"authenticate": false,
+	
+	"#":"Only requests with an estimate below this threshold will be processed",
+	"maxPointsPerRequest": 100000000,
+
+	"#":"Only requests with an estimate below this threshold will be processed",
+	"maxNodesPerRequest": 40000
+
+}

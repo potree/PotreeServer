@@ -1,3 +1,7 @@
 node_modules
 build/potree_server/potree_server.log
 package-lock.json
+testcloud.txt
+log.txt
+test.las
+teststream.txt

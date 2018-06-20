@@ -1,47 +1,103 @@
 
+const express = require("express");
+const cors = require('cors');
+const spawnSync = require('child_process').spawnSync;
+const spawn = require('child_process').spawn;
+const uuidv4 = require('uuid/v4');
+const url = require('url');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const os = require("os");
+//const archiver = require('archiver');
+//const log4js = require('log4js');
+
+const PlaneClipRegion = require("./PlaneClipRegion.js").PlaneClipRegion;
+const Vector3 = require("./Vector3.js").Vector3;
+const Plane = require("./Plane.js").Plane;
+const RegionsFilter = require("./RegionsFilter.js").RegionsFilter;
 
 let app = express();
 let server = http.createServer(app);
 
-function getExtractRegionExe(){
-	let exe = null;
-	if(fs.existsSync(settings.extractRegionExe)){
-		exe = settings.extractRegionExe;
-	}else if(fs.existsSync(`${__dirname}/${settings.extractRegionExe}`)){
-		exe = `${__dirname}/${settings.extractRegionExe}`;
-	}else{
-		logger.info(`extractRegionExe not found at expected location: ${settings.extractRegionExe}`);
-	}
-	
-	return exe;
+const logger = console;
+
+logger.info(`filename ${__filename}`);
+logger.info(`dirname ${__dirname}`);
+
+let settingsPath = `./settings.json`;
+let settings = null;
+
+logger.info("starting potree server");
+logger.info(`Using settings from: '${settingsPath}'`);
+
+if(fs.existsSync(settingsPath)){
+	settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+}else{
+	logger.error(`No settings found at: '${settingsPath}'`);
+	process.exit()
 }
 
-const workers = {
-	active: new Map(),
-	finished: new Map()
+
+let filterInstances = new Map();
+
+
+
+function pointcloudsFromRequest(req){
+	let purl = url.parse(req.url, true);
+	let query = purl.query;
+
+	let v = (value, def) => ((value === undefined) ? def : value);
+
+	let qPointclouds = v(query["pointclouds"], "");
+	let jPointclouds = JSON.parse(qPointclouds);
+
+	for(let pointcloud of jPointclouds){
+
+		let resolvedPath = null;
+		for(let basePath of settings.path){
+			let potentialResolve = `${basePath}${pointcloud.path}`;
+			potentialResolve = path.posix.normalize(potentialResolve);
+
+			if(fs.existsSync(potentialResolve)){
+				resolvedPath = potentialResolve;
+			}
+		}
+
+		if(resolvedPath === null){
+			throw new Error(`path could not be resolved / point cloud not found: ${pointcloud.path}`);
+		}else{
+			pointcloud.path = resolvedPath;
+		}
+	}
+
+	return jPointclouds;
+}
+
+function clipRegionsFromRequest(req){
+	let purl = url.parse(req.url, true);
+	let query = purl.query;
+
+	let v = (value, def) => ((value === undefined) ? def : value);
+
+	let qRegions = v(query["regions"], "");
+	let jRegions = JSON.parse(qRegions);
+
+	let clipRegions = [];
+	for(let jregion of jRegions){
+
+		let planes = jregion.map( jplane => {
+			return new Plane(new Vector3(...jplane.slice(0,3)), jplane[3]);
+		});
+
+		let clipRegion = new PlaneClipRegion(planes);
+		clipRegions.push(clipRegion);
+	}
+
+	return clipRegions;
 };
 
-function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, threshold){
-	
-	let purls = pointclouds.map(p => url.parse(p));
-	let realPointcloudPaths = purls.map(p => settings.wwwroot + p.pathname.substr(1));
-	
-	logger.info(`realPointcloudPaths ${realPointcloudPaths}`);
-	
-	let args = [
-		...realPointcloudPaths,
-		"--box", box,
-		"--min-level", minLevel, 
-		"--max-level", maxLevel, 
-		"--stdout",
-		"--check-threshold", threshold
-	];
-	
-	
-	let result = spawnSync(getExtractRegionExe(), args, {shell: false, detached: true});
-	
-	return result;
-}
+
 
 // various handlers that are invoked by accessing http://<server>/<handler>
 // e.g. http://localhost:3000/observe_status?workerID=abc
@@ -113,296 +169,205 @@ function potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, thresh
 		res.send(msg);
 	});
 
-	app.use("/start_extract_region_worker", function(request, response, next){
-		
-		logger.info("start_extract_region_worker");
-		
-		let purl = url.parse(request.url, true);
-		let query = purl.query;
-		
-		let v = (value, def) => ((value === undefined) ? def : value);
-		
-		let minLevel = v(query.minLOD, 0);
-		let maxLevel = v(query.maxLOD, 5);
-		let box = v(query.box, null);
-		let pointclouds = v(query["pointcloud[]"], []);
-		if(!(pointclouds instanceof Array)){
-			pointclouds = [pointclouds];
-		}
-		
-		if(pointclouds.length === 0){
-			logger.warn("start_extract_region_worker was called without point cloud");
-			
-			let res = {
-				status: "ERROR_NO_POINTCLOUD_SPECIFIED",
-				message: "Failed to start a region extraction worker because no point cloud was specified"
-			};
-			
-			response.end(JSON.stringify(res, null, "\t"));
-			return;
-		}
-		
-		let check = potreeCheckRegionThreshold(pointclouds, box, minLevel, maxLevel, settings.maxPointsProcessedThreshold);
-
-		try{
-			check = JSON.parse(check.stdout.toString());
-		}catch(e){
-			logger.info(e);
-			logger.info(`JSON: ${check.stdout.toString()}`);
-			let res = {
-				status: "ERROR_START_EXTRACT_REGION_WORKER_FAILED",
-				message: "Failed to start a region extraction worker"
-			};
-			
-			response.end(JSON.stringify(res, null, "\t"));
-		}
-		
-		if(check.result === "THRESHOLD_EXCEEDED"){
-			let res = {
-				status: "ERROR_POINT_PROCESSED_ESTIMATE_TOO_LARGE",
-				message: `Too many candidate points within the selection.`
-			};
-			
-			response.end(JSON.stringify(res, null, "\t"));
-		}else if(check.result === "BELOW_THRESHOLD"){
-			let worker = new PotreeExtractRegionWorker(pointclouds, box, minLevel, maxLevel);
-			
-			if(settings.authenticate){
-				worker.user = request.connection.user ? request.connection.user : null;
-			}
-			
-			worker.start();
-			
-			let res = {
-				status: "OK",
-				workerID: worker.uuid,
-				message: `Worker sucessfully spawned: ${worker.uuid}`
-			};
-			
-			response.end(JSON.stringify(res, null, "\t"));
-		}
-	});
+	app.use("/test", function (req, res, next) {
+		let msg = "asd";
 	
-	app.use("/get_las", function(request, response){
-		let purl = url.parse(request.url, true);
-		let query = purl.query;
-		
-		let workerID = query.workerID;
-		let worker = findWorker(workerID);
-		
-		if(worker){
-			
-			// AUTHENTICATION & AUTHORIZATION
-			if(settings.authenticate){
-				if(request.connection.user){
-					if(request.connection.user !== worker.user){
-						let res = {
-							status: "ERROR_AUTHORIZATION_FAILED",
-							workerID: worker.uuid,
-							message: `Authorization failed. Did you try to download someone elses results?`
-						};
-						
-						response.end(JSON.stringify(res, null, "\t"));
-						return;
-					}
-				}else{
-					let res = {
-						status: "ERROR_AUTHENTICATION_FAILED",
-						workerID: worker.uuid,
-						message: `Authentication failed, anonymous access not permitted.`
-					};
-					
-					response.end(JSON.stringify(res, null, "\t"));
-					return;
-				}
-			}
-			
-			let filePath = worker.archivePath;
-			let stat = fs.statSync(filePath);
+		res.send(msg);
+	});
 
-			response.writeHead(200, {
-				'Content-Type': 'application/octet-stream',
-				"Content-Disposition": `attachment;filename=${worker.name}.zip`,
-				'Content-Length': stat.size,
-				"Connection": "Close"
-			});
 
-			let readStream = fs.createReadStream(filePath);
-			readStream.on('data', function(data) {
-				response.write(data);
-			});
-			
-			readStream.on('close', function() {
-				worker.deleteArtifacts();
-				
-				response.end();        
-			});
-			
-			return null;
+	app.use("/create_regions_filter", async function (req, res, next) {
+
+		let clipRegions = clipRegionsFromRequest(req);
+		let pointclouds = pointcloudsFromRequest(req);
+
+		let regionsFilter = new RegionsFilter(pointclouds, clipRegions);
+		
+
+		let estimate = await regionsFilter.estimate().catch(e => {
+			let response = {
+				status: "ERROR",
+				message: "estimate failed",
+			};
+
+			res.json(response);
+			res.end();
+
+			throw e;
+		});
+
+		let requestTooBig = estimate.numNodes > settings.maxNodesPerRequest 
+			|| estimate.numPoints > settings.maxPointsPerRequest;
+
+		let response;
+
+		if(requestTooBig){
+			// return bad news
+
+			let {numNodes, numPoints} = estimate;
+
+			let message = `Too many points or nodes in filter region.\n`;
+			message += `Estimated: ${numNodes.toLocaleString("en")} nodes, ${numPoints.toLocaleString("en")} points\n`;
+			message += `Allowed: ${settings.maxNodesPerRequest.toLocaleString("en")} nodes, ${settings.maxPointsPerRequest.toLocaleString("en")} points`;
+
+			response = {
+				status: "ERROR",
+				message: message
+			};
 		}else{
-			response.statusCode = 404;
-			response.end("");
-		}
-	});
-	
-	app.use("/observe_status", function(request, response){
-		let purl = url.parse(request.url, true);
-		let query = purl.query;
-		
-		let workerID = query.workerID;
-		let worker = findWorker(workerID);
-			
-		if(!worker){
-			let res = {
-				status: "ERROR_WORKER_NOT_FOUND",
-				message: `A worker with the specified ID could not be found.`
+			// return handle to request, while request is being processed
+
+			let uuidString = uuidv4();
+
+			let d = new Date();
+			let [year, month, day] = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), d.getDate()];
+			let [hours, minutes, seconds] = [d.getHours(), d.getMinutes(), d.getSeconds()].map(v => String(v).padStart(2, "0"));
+			let date = `${year}_${month}_${day}_${hours}${minutes}_${seconds}`;
+
+			let handle = `${date}_${uuidString}`;
+			//let handle = uuidv4();
+			let outputDirectory = `${settings.outputDirectory}/${handle}`;
+
+			filterInstances.set(handle, regionsFilter);
+
+			regionsFilter.filter(outputDirectory);
+
+			response = {
+				status: "FILTERING",
+				handle: handle,
+				estimate: {
+					numNodes: estimate.numNodes,
+					numPoints: estimate.numPoints
+				}
 			};
-			
-			response.end(JSON.stringify(res, null, "\t"));
-			return;
 		}
-		
-		response.writeHead(200, {
-			'Content-Type': 'text/plain; charset=utf-8',
-			'Transfer-Encoding': 'chunked',
-			'X-Content-Type-Options': 'nosniff'});
-		
-		let observe = () => {
-			let status = worker.status;
-			
-			let res = null;
-			
-			if(status === workerStatus.ACTIVE){
-				res = {
-					status: "ACTIVE",
-					message: ``
-				};
-			}else if(status === workerStatus.CANCELED){
-				res = {
-					status: "CANCELED",
-					message: ``
-				};
-			}else if(status === workerStatus.FINISHED){
-				res = {
-					status: "FINISHED",
-					message: ``
-				};
-			}
-			
-			if(status === workerStatus.FINISHED){
-				response.end(JSON.stringify(res, null, "\t"));
-			}else{
-				response.write(JSON.stringify(res, null, "\t"));
-				setTimeout(observe, 500);
-			}
-		};
-		
-		observe();
+
+		let responseString = JSON.stringify(response, null, "\t");
+
+		res.send(responseString);
+		res.end();
 	});
-	
-	app.use("/get_status", function(request, response){
-		let purl = url.parse(request.url, true);
-		let query = purl.query;
-		
-		let workerID = query.workerID;
-		
-		if(!workerID){
-			
-			let res = `<html>
-			<link rel="stylesheet" type="text/css" href="http://${request.headers.host}/server.css">
-			<body>`;
-			
-			{ // ACTIVE WORKERS
-				res += `
-				Number of active workers: ${workers.active.size} <br>
-				
-				<table>
-					<tr>
-						<th>Type</th>
-						<th>ID</th>
-						<th>started</th>
-						<th>status</th>
-					</tr>
-				`;
-				
-				for(let entry of workers.active){
-					let worker = entry[1];
-					
-					res += `
-					<tr>
-						<td>${worker.constructor.name}</td>
-						<td><a href="./get_status?workerID=${entry[0]}">${entry[0]}</a></td>
-						<td>${worker.started.toLocaleString()}</td>
-						<td>${worker.getStatusString()}</td>
-					</tr>`;
-				}
-				
-				res += `</table>`;
-			}
-			
-			res += `<br>`;
-			
-			{ // FINISHED / CANCELED WORKERS
-				res += `
-				Number of finished / canceled workers: ${workers.finished.size} <br>
-				
-				<table>
-					<tr>
-						<th>Type</th>
-						<th>ID</th>
-						<th>started</th>
-						<th>status</th>
-					</tr>`;
-				
-				for(let entry of workers.finished){
-					let worker = entry[1];
-					
-					res += `
-					<tr>
-						<td>${worker.constructor.name}</td>
-						<td><a href="./get_status?workerID=${entry[0]}">${entry[0]}</a></td>
-						<td>${worker.started.toLocaleString()}</td>
-						<td>${worker.getStatusString()}</td>
-					</tr>`;
-				}
-				
-				res += `</table>`;
-			}
-			
-			res += `</body></html>`;
-			
-			response.end(res);
-		}else{
-		
-			//let worker = workers.active.get(workerID);
-			let worker = findWorker(workerID);
-			
-			if(!worker){
-				response.end(`no worker with specified ID found`);
-				//return `no worker with specified ID found`;
-			}else{
-				//response.end(worker.statusPage());
-				response.end(JSON.stringify(worker.getStatus(), null, "\t"));
-			}
-		}
-	});
-	
-	app.use("/test", (req, res, next) => {
-		logger.info("start_extract_region_worker");
-		
+
+	app.use("/check_regions_filter", async function (req, res, next) {
 		let purl = url.parse(req.url, true);
 		let query = purl.query;
-		
+
 		let v = (value, def) => ((value === undefined) ? def : value);
+
+		let handle = v(query["handle"], null);
+
+		if(!handle){
+			let response = {
+				status: "ERROR",
+				message: "invalid handle"
+			};
+			let responseString = JSON.stringify(response, null, "\t");
+			res.send(responseString);
+			res.end();
+		}
+
+		let instance = filterInstances.get(handle);
+
+		if(!instance){
+			let response = {
+				status: "ERROR",
+				message: `could not find worker/results for handle '${handle}'`
+			};
+			let responseString = JSON.stringify(response, null, "\t");
+			res.send(responseString);
+			res.end();
+
+			return;
+		}
+
+		{
+			let report = instance.report;
+
+			let response = {
+				status: report.status,
+				message: "yeah!"
+			};
+
+			response = report;
+
+			let responseString = JSON.stringify(response, null, "\t");
+
+			res.send(responseString);
+			res.end();
+		}
+
+	});
+
+	app.use("/download_regions_filter_result", async function (req, res, next) {
+		let purl = url.parse(req.url, true);
+		let query = purl.query;
+
+		let v = (value, def) => ((value === undefined) ? def : value);
+
+		let handle = v(query["handle"], null);
+		let index = v(query["index"], null);
+		index = Math.floor(Number(index));
+
+		if(isNaN(index)){
+			let response = {
+				status: "ERROR",
+				message: `invalid index: ${query["index"]}`
+			};
+			res.end(JSON.stringify(response));
+			return;
+		}
+
+		let workDir = `${settings.outputDirectory}/${handle}`;
+		let filePath = `${workDir}/result_${index}.las`;
+		let stat = fs.statSync(filePath);
+
+		res.writeHead(200, {
+			'Content-Type': 'application/octet-stream',
+			"Content-Disposition": `attachment;filename=result_${index}.las`,
+			'Content-Length': stat.size,
+			"Connection": "Close"
+		});
+
+		let readStream = fs.createReadStream(filePath);
+		readStream.on('data', function(data) {
+			res.write(data);
+		});
 		
-		//let minLevel = v(query.minLOD, 0);
-		//let maxLevel = v(query.maxLOD, 5);
-		//let box = v(query.box, null);
-		//let pointcloud = v(query.pointcloud, null);
+		readStream.on('close', function() {
+			res.end();
+		});
+
+	});
+
+	app.use("/download_regions_filter_report", async function (req, res, next) {
+		let purl = url.parse(req.url, true);
+		let query = purl.query;
+
+		let v = (value, def) => ((value === undefined) ? def : value);
+
+		let handle = v(query["handle"], null);
+
+		let workDir = `${settings.outputDirectory}/${handle}`;
+		let filePath = `${workDir}/report.json`;
+		let stat = fs.statSync(filePath);
+
+		res.writeHead(200, {
+			'Content-Type': 'application/octet-stream',
+			"Content-Disposition": `attachment;filename=report.json`,
+			'Content-Length': stat.size,
+			"Connection": "Close"
+		});
+
+		let readStream = fs.createReadStream(filePath);
+		readStream.on('data', function(data) {
+			res.write(data);
+		});
 		
-		logger.info(query);
-		
-		res.end();
+		readStream.on('close', function() {
+			res.end();
+		});
+
+
 	});
 }
 
