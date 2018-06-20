@@ -28,9 +28,6 @@ logger.info(`dirname ${__dirname}`);
 let settingsPath = `./settings.json`;
 let settings = null;
 
-let maxNodes = 20 * 1000;
-let maxPoints = 50 * 1000 * 1000;
-
 logger.info("starting potree server");
 logger.info(`Using settings from: '${settingsPath}'`);
 
@@ -42,7 +39,7 @@ if(fs.existsSync(settingsPath)){
 }
 
 
-
+let filterInstances = new Map();
 
 
 
@@ -58,8 +55,9 @@ function pointcloudsFromRequest(req){
 	for(let pointcloud of jPointclouds){
 
 		let resolvedPath = null;
-		for(let path of settings.path){
-			let potentialResolve = `${path}${pointcloud.path}`;
+		for(let basePath of settings.path){
+			let potentialResolve = `${basePath}${pointcloud.path}`;
+			potentialResolve = path.posix.normalize(potentialResolve);
 
 			if(fs.existsSync(potentialResolve)){
 				resolvedPath = potentialResolve;
@@ -184,6 +182,7 @@ function clipRegionsFromRequest(req){
 		let pointclouds = pointcloudsFromRequest(req);
 
 		let regionsFilter = new RegionsFilter(pointclouds, clipRegions);
+		
 
 		let estimate = await regionsFilter.estimate().catch(e => {
 			let response = {
@@ -197,7 +196,8 @@ function clipRegionsFromRequest(req){
 			throw e;
 		});
 
-		let requestTooBig = estimate.numNodes > maxNodes || estimate.numPoints > maxPoints;
+		let requestTooBig = estimate.numNodes > settings.maxNodesPerRequest 
+			|| estimate.numPoints > settings.maxPointsPerRequest;
 
 		let response;
 
@@ -206,9 +206,9 @@ function clipRegionsFromRequest(req){
 
 			let {numNodes, numPoints} = estimate;
 
-			let message = `Too many points or nodes in filter region.`;
-			message += `Estimated: ${numNodes} nodes, ${numPoints} points`;
-			message += `Allowed: ${maxNodes} nodes, ${maxPoints} points`;
+			let message = `Too many points or nodes in filter region.\n`;
+			message += `Estimated: ${numNodes.toLocaleString("en")} nodes, ${numPoints.toLocaleString("en")} points\n`;
+			message += `Allowed: ${settings.maxNodesPerRequest.toLocaleString("en")} nodes, ${settings.maxPointsPerRequest.toLocaleString("en")} points`;
 
 			response = {
 				status: "ERROR",
@@ -217,8 +217,18 @@ function clipRegionsFromRequest(req){
 		}else{
 			// return handle to request, while request is being processed
 
-			let handle = uuidv4();
+			let uuidString = uuidv4();
+
+			let d = new Date();
+			let [year, month, day] = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), d.getDate()];
+			let [hours, minutes, seconds] = [d.getHours(), d.getMinutes(), d.getSeconds()].map(v => String(v).padStart(2, "0"));
+			let date = `${year}_${month}_${day}_${hours}${minutes}_${seconds}`;
+
+			let handle = `${date}_${uuidString}`;
+			//let handle = uuidv4();
 			let outputDirectory = `${settings.outputDirectory}/${handle}`;
+
+			filterInstances.set(handle, regionsFilter);
 
 			regionsFilter.filter(outputDirectory);
 
@@ -256,9 +266,9 @@ function clipRegionsFromRequest(req){
 			res.end();
 		}
 
-		let workDir = `${settings.outputDirectory}/${handle}`;
-		let reportPath = `${workDir}/report.json`;
-		if(!fs.existsSync(reportPath)){
+		let instance = filterInstances.get(handle);
+
+		if(!instance){
 			let response = {
 				status: "ERROR",
 				message: `could not find worker/results for handle '${handle}'`
@@ -266,19 +276,26 @@ function clipRegionsFromRequest(req){
 			let responseString = JSON.stringify(response, null, "\t");
 			res.send(responseString);
 			res.end();
-		}else{
 
-			let reportString = await fs.promises.readFile(reportPath);
-			let report = JSON.parse(reportString);
+			return;
+		}
+
+		{
+			let report = instance.report;
 
 			let response = {
 				status: report.status,
 				message: "yeah!"
 			};
+
+			response = report;
+
 			let responseString = JSON.stringify(response, null, "\t");
+
 			res.send(responseString);
 			res.end();
 		}
+
 	});
 
 	app.use("/download_regions_filter_result", async function (req, res, next) {
@@ -288,14 +305,25 @@ function clipRegionsFromRequest(req){
 		let v = (value, def) => ((value === undefined) ? def : value);
 
 		let handle = v(query["handle"], null);
+		let index = v(query["index"], null);
+		index = Math.floor(Number(index));
+
+		if(isNaN(index)){
+			let response = {
+				status: "ERROR",
+				message: `invalid index: ${query["index"]}`
+			};
+			res.end(JSON.stringify(response));
+			return;
+		}
 
 		let workDir = `${settings.outputDirectory}/${handle}`;
-		let filePath = `${workDir}/clipped.las`;
+		let filePath = `${workDir}/result_${index}.las`;
 		let stat = fs.statSync(filePath);
 
 		res.writeHead(200, {
 			'Content-Type': 'application/octet-stream',
-			"Content-Disposition": `attachment;filename=clipped.las`,
+			"Content-Disposition": `attachment;filename=result_${index}.las`,
 			'Content-Length': stat.size,
 			"Connection": "Close"
 		});
@@ -308,6 +336,37 @@ function clipRegionsFromRequest(req){
 		readStream.on('close', function() {
 			res.end();
 		});
+
+	});
+
+	app.use("/download_regions_filter_report", async function (req, res, next) {
+		let purl = url.parse(req.url, true);
+		let query = purl.query;
+
+		let v = (value, def) => ((value === undefined) ? def : value);
+
+		let handle = v(query["handle"], null);
+
+		let workDir = `${settings.outputDirectory}/${handle}`;
+		let filePath = `${workDir}/report.json`;
+		let stat = fs.statSync(filePath);
+
+		res.writeHead(200, {
+			'Content-Type': 'application/octet-stream',
+			"Content-Disposition": `attachment;filename=report.json`,
+			'Content-Length': stat.size,
+			"Connection": "Close"
+		});
+
+		let readStream = fs.createReadStream(filePath);
+		readStream.on('data', function(data) {
+			res.write(data);
+		});
+		
+		readStream.on('close', function() {
+			res.end();
+		});
+
 
 	});
 }

@@ -2,6 +2,7 @@
 
 //const os = require("os");
 const fs = require('fs');
+const path = require('path');
 const Vector3 = require("./Vector3.js").Vector3;
 const Box3 = require("./Box3.js").Box3;
 const Plane = require("./Plane.js").Plane;
@@ -168,7 +169,7 @@ class RegionsFilter{
 		this.clipRegions = clipRegions;
 		this.filterCalled = false;
 
-		this.estimation =  {
+		this.totalEstimate =  {
 			numNodes: 0,
 			numPoints: 0	
 		};
@@ -180,6 +181,8 @@ class RegionsFilter{
 			outside: 0,
 			timestamps: {}
 		};
+
+		this.updateReport();
 
 		this.status = FilterStatus.UNDEFINED;
 	}
@@ -331,7 +334,7 @@ class RegionsFilter{
 	}
 
 	async updateReport(){
-		let infos = {
+		let report = {
 			"status": this.status,
 			"path": this.path,
 		};
@@ -355,16 +358,19 @@ class RegionsFilter{
 				durations["filter"] = `${filterDuration.toFixed(3)}s`;
 			}
 
-			infos.durations = durations;
+			report.durations = durations;
 		}
 
 		let jPointclouds = [];
 		for(let pointcloud of this.pointclouds){
+
+			let filterDuration = pointcloud.filterDuration ? `${pointcloud.filterDuration.toFixed(3)}s` : undefined;
+
 			let jPointcloud = {
 				path: pointcloud.path,
 				transform: pointcloud.transform,
 				estimate: pointcloud.estimate,
-				filterDuration: `${pointcloud.filterDuration.toFixed(3)}s`
+				filterDuration: filterDuration
 			};
 			jPointclouds.push(jPointcloud);
 
@@ -377,25 +383,22 @@ class RegionsFilter{
 			}
 		}
 
-		infos["estimate"] = {
+		report["estimate"] = {
 			nodes: this.totalEstimate.numNodes,
 			points: this.totalEstimate.numPoints,
 		};
 
-		infos["progress"] = {
+		report["progress"] = {
 			"processed nodes": this.progress.numNodes,
 			"processed points": this.progress.numPoints,
 			"accepted points": this.progress.inside,
 			"discarded points": this.progress.outside
 		};
 		
-		infos["pointclouds"] = jPointclouds;
-		infos["clip regions"] = this.clipRegions;
-		
-		let infoString = JSON.stringify(infos, null, "\t");
-		infoString = escapeReportString(infoString);
+		report["pointclouds"] = jPointclouds;
+		report["clip regions"] = this.clipRegions;
 
-		await fs.promises.writeFile(this.reportPath, infoString, {encoding: "utf8"});
+		this.report = report;
 	}
 
 	async filterPointcloud(pointcloud, outPath){
@@ -419,8 +422,21 @@ class RegionsFilter{
 
 		let readPos = attributes.contains(PointAttribute.POSITION_CARTESIAN);
 		let readColor = attributes.contains(PointAttribute.COLOR_PACKED);
+		let readIntensity = attributes.contains(PointAttribute.INTENSITY);
+		let readClassification = attributes.contains(PointAttribute.CLASSIFICATION);
+		let readReturnNumber = attributes.contains(PointAttribute.RETURN_NUMBER);
+		let readNumberOfReturns = attributes.contains(PointAttribute.NUMBER_OF_RETURNS);
+		let readSourceID = attributes.contains(PointAttribute.SOURCE_ID);
+		let readGPSTime = attributes.contains(PointAttribute.GPS_TIME);
+
 		let offsetPos = attributes.offsetOf(PointAttribute.POSITION_CARTESIAN);
 		let offsetColor = attributes.offsetOf(PointAttribute.COLOR_PACKED);
+		let offsetIntensity = attributes.offsetOf(PointAttribute.INTENSITY);
+		let offsetClassification = attributes.offsetOf(PointAttribute.CLASSIFICATION);
+		let offsetReturnNumber = attributes.offsetOf(PointAttribute.RETURN_NUMBER);
+		let offsetNumberOfReturns = attributes.offsetOf(PointAttribute.NUMBER_OF_RETURNS);
+		let offsetSourceID = attributes.offsetOf(PointAttribute.SOURCE_ID);
+		let offsetGPSTime = attributes.offsetOf(PointAttribute.GPS_TIME);
 
 		let transform = new Matrix4();
 		transform.elements = pointcloud.transform;
@@ -452,6 +468,7 @@ class RegionsFilter{
 
 				let tmpBuffer = new ArrayBuffer(4);
 				let tmpUint32 = new Uint32Array(tmpBuffer);
+				let tmpUint16 = new Uint16Array(tmpBuffer);
 				let tmpUint8 = new Uint8Array(tmpBuffer);
 
 				let insideThis = 0;
@@ -460,6 +477,12 @@ class RegionsFilter{
 				let [ux, uy, uz] = [0, 0, 0];
 				let [x, y, z] = [0, 0, 0];
 				let [r, g, b] = [0, 0, 0];
+				let intensity = 0;
+				let classification = 0;
+				let returnNumber = 0;
+				let numberOfReturns = 0;
+				let sourceID = 0;
+				let gpsTime = 0;
 
 				for(let i = 0; i < numPoints; i++){
 
@@ -479,6 +502,30 @@ class RegionsFilter{
 						r = buffer[inOffset + offsetColor + 0];
 						g = buffer[inOffset + offsetColor + 1];
 						b = buffer[inOffset + offsetColor + 2];
+					}
+
+					if(readIntensity){
+						intensity = buffer.readUInt16LE(inOffset + offsetIntensity);
+					}
+
+					if(readClassification){
+						classification = buffer[inOffset + offsetClassification];
+					}
+
+					if(readReturnNumber){
+						returnNumber = buffer[inOffset + offsetReturnNumber];
+					}
+
+					if(readNumberOfReturns){
+						numberOfReturns = buffer[inOffset + offsetNumberOfReturns];
+					}
+
+					if(readSourceID){
+						sourceID = buffer.readUInt16LE(inOffset + offsetSourceID);
+					}
+
+					if(readGPSTime){
+						gpsTime = buffer.readDoubleLE(inOffset + offsetGPSTime);
 					}
 
 					vec.x = x;
@@ -501,6 +548,7 @@ class RegionsFilter{
 						let uy = (y - boundingBox.min.y) / metadata.scale;
 						let uz = (z - boundingBox.min.z) / metadata.scale;
 
+						// == POSITION ==
 						// relatively slow
 						//outBuffer.writeInt32LE(ux, outOffset + 0);
 						//outBuffer.writeInt32LE(uy, outOffset + 4);
@@ -525,7 +573,25 @@ class RegionsFilter{
 						outBuffer[outOffset + 10] = tmpUint8[2];
 						outBuffer[outOffset + 11] = tmpUint8[3];
 
+						// == INTENSITY == 
+						tmpUint16[0] = intensity;
+						outBuffer[outOffset + 12] = tmpUint8[0];
+						outBuffer[outOffset + 13] = tmpUint8[1];
+
+						// == RETURN NUMBER & NUMBER OF RETURNS
+						let retNumbers = returnNumber & (numberOfReturns << 3);
+						outBuffer[outOffset + 14] = retNumbers;
+
+						// == CLASSIFICATION ==
+						outBuffer[outOffset + 15] = classification;
+
+						// == POINT SOURCE ID == 
+						tmpUint16[0] = sourceID;
+						outBuffer[outOffset + 18] = tmpUint8[0];
+						outBuffer[outOffset + 19] = tmpUint8[1];
 						
+						// == RGB ==
+
 						// relatively slow
 						//outBuffer.writeInt16LE(r, outOffset + 20);
 						//outBuffer.writeInt16LE(g, outOffset + 22);
@@ -553,6 +619,8 @@ class RegionsFilter{
 				this.progress.inside = inside;
 				this.progress.outside = outside;
 				this.progress.timestamps["filter-end"] = now();
+
+				this.updateReport();
 			});
 		}
 
@@ -586,7 +654,7 @@ class RegionsFilter{
 		console.log(`visible nodes: ${visibleNodes.length.toLocaleString("en")}`);
 		console.log(`inside: ${inside.toLocaleString("en")} (${percentInside}%), outside: ${outside.toLocaleString("en")}`);
 		console.log(`wrote result to ${outPath} (${parseInt(mb)}MB)`);
-		console.log(`report: ${this.reportPath} (${parseInt(mb)}MB)`);
+		console.log(`report: ${this.reportPath}`);
 		console.log(`duration: ${duration.toFixed(3)}s ( ${pointsPerSec.toLocaleString("en")} points / second )`);
 		console.log(`=====================================`);
 	}
@@ -607,6 +675,8 @@ class RegionsFilter{
 
 		this.status = FilterStatus.FILTERING;
 
+		await this.updateReport();
+
 		let i = 0;
 		for(let pointcloud of this.pointclouds){
 			let pcResultPath = `${outPath}/result_${i}.las`;
@@ -621,6 +691,10 @@ class RegionsFilter{
 		this.progress.timestamps["filter-end"] = now();
 		
 		await this.updateReport();
+
+		let reportString = JSON.stringify(this.report, null, "\t");
+		reportString = escapeReportString(reportString);
+		await fs.promises.writeFile(this.reportPath, reportString, {encoding: "utf8"});
 	}
 
 }

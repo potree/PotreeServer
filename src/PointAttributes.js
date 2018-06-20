@@ -6,6 +6,10 @@ let PointAttribute = {
 	RGBA: {bytes: 4},
 	INTENSITY: {bytes: 2},
 	CLASSIFICATION: {bytes: 1},
+	RETURN_NUMBER: {bytes: 1},
+	NUMBER_OF_RETURNS: {bytes: 1},
+	SOURCE_ID: {bytes: 2},
+	GPS_TIME: {bytes: 8},
 	NORMAL_SPHEREMAPPED: {bytes: 2},
 };
 

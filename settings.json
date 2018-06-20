@@ -11,9 +11,9 @@
 	"authenticate": false,
 	
 	"#":"Only requests with an estimate below this threshold will be processed",
-	"maxPointsProcessedThreshold": 10000000,
+	"maxPointsPerRequest": 20000000,
 
 	"#":"Only requests with an estimate below this threshold will be processed",
-	"maxNodesProcessedThreshold": 20000
+	"maxNodesPerRequest": 20000
 
 }

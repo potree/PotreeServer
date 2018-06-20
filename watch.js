@@ -38,7 +38,6 @@ function restartServer(){
 	}
 
 	let content = fs.readFileSync("./src/test.js", "utf8");
-	console.log("content: ", content);
 
 	node = spawn('node', ['./src/potree_server.js'], {stdio: 'inherit'})
 
