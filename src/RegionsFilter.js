@@ -416,8 +416,6 @@ class RegionsFilter{
 	async filterPointcloud(pointcloud, outPath){
 		let start = now();
 
-		let promises = [];
-
 		let {metadata, boundingBox, attributes, visibleNodes} = pointcloud;
 
 		let inside = 0;
@@ -429,6 +427,7 @@ class RegionsFilter{
 		lasHeader.scale = metadata.scale;
 		lasHeader.min = boundingBox.min.toArray();
 		lasHeader.max = boundingBox.max.toArray();
+		lasHeader.offset = boundingBox.min.toArray();
 
 		wstream.write(lasHeader.toBuffer());
 
