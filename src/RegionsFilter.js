@@ -3,6 +3,9 @@
 //const os = require("os");
 const fs = require('fs');
 const path = require('path');
+
+const async = require("async");
+
 const Vector3 = require("./Vector3.js").Vector3;
 const Box3 = require("./Box3.js").Box3;
 const Plane = require("./Plane.js").Plane;
@@ -11,6 +14,7 @@ const LASHeader = require("./LASHeader.js").LASHeader;
 const PointAttribute = require("./PointAttributes.js").PointAttribute;
 const PointAttributes = require("./PointAttributes.js").PointAttributes;
 const Matrix4 = require("./Matrix4.js").Matrix4;
+
 
 
 let readFile = function(file){
@@ -32,6 +36,14 @@ let endStream = function(stream){
 		});
 
 		stream.end();
+	});
+};
+
+let asyncParallelLoad = function(tasks, limit){
+	return new Promise( (resolve, reject) => {
+		async.parallelLimit(tasks, limit, () => {
+			resolve();
+		});	
 	});
 };
 
@@ -449,14 +461,16 @@ class RegionsFilter{
 			localClipRegions.push(localRegion);
 		}
 
+		let tasks = [];
+
 		for(let node of visibleNodes){
 
 			let hierarchyPath = getHierarchyPath(node.name, metadata.hierarchyStepSize);
 			let nodePath = `${pointcloud.path}/../data/${hierarchyPath}/${node.name}.bin`;
-			let promise = readFile(nodePath);
-			promises.push(promise);
+			
 
-			promise.then( (result) => {
+			let task = async () => {
+				let result = await readFile(nodePath);
 
 				let buffer = result;
 
@@ -621,10 +635,13 @@ class RegionsFilter{
 				this.progress.timestamps["filter-end"] = now();
 
 				this.updateReport();
-			});
+			};
+
+			tasks.push(task);
+
 		}
 
-		await Promise.all(promises);
+		await asyncParallelLoad(tasks, 10);
 
 		await endStream(wstream);
 
